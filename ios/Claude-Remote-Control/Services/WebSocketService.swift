@@ -162,13 +162,13 @@ final class WebSocketService: NSObject, ObservableObject {
             }
 
         case "task_started":
-            if let payload = extractPayload(dict) as? [String: Any],
+            if let payload = rawPayload(dict),
                let taskId = payload["task_id"] as? String {
                 statusPublisher.send(WsTaskStatusPayload(task_id: taskId, status: "running"))
             }
 
         case "task_completed":
-            if let payload = extractPayload(dict) as? [String: Any],
+            if let payload = rawPayload(dict),
                let taskId = payload["task_id"] as? String {
                 resultPublisher.send(WsTaskResultPayload(
                     task_id: taskId,
@@ -180,7 +180,7 @@ final class WebSocketService: NSObject, ObservableObject {
             }
 
         case "task_failed":
-            if let payload = extractPayload(dict) as? [String: Any],
+            if let payload = rawPayload(dict),
                let taskId = payload["task_id"] as? String {
                 resultPublisher.send(WsTaskResultPayload(
                     task_id: taskId,
@@ -198,6 +198,11 @@ final class WebSocketService: NSObject, ObservableObject {
 
         default: break
         }
+    }
+
+    // 从消息信封中提取 payload 字典（不解码）
+    private func rawPayload(_ dict: [String: Any]) -> [String: Any]? {
+        return dict["payload"] as? [String: Any]
     }
 
     // 从消息信封中提取 payload 并解码为目标类型
