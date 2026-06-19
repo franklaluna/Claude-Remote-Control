@@ -41,7 +41,7 @@ struct DeviceListView: View {
                     DeviceCardView(device: device)
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                             Button(role: .destructive) {
-                                Task { await viewModel.deleteDevice(device) }
+                                deleteDevice(device)
                             } label: {
                                 Label("删除", systemImage: "trash")
                             }
@@ -49,15 +49,11 @@ struct DeviceListView: View {
                 }
             }
             .listStyle(.insetGrouped)
-            .refreshable {
-                await viewModel.loadDevices()
-            }
+            .refreshable { await viewModel.loadDevices() }
             .navigationTitle("设备列表")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        viewModel.showAddSheet = true
-                    } label: {
+                    Button { viewModel.showAddSheet = true } label: {
                         Image(systemName: "plus")
                     }
                 }
@@ -66,16 +62,18 @@ struct DeviceListView: View {
                 addDeviceSheet
             }
         }
-        .task {
-            await viewModel.loadDevices()
-        }
+        .task { await viewModel.loadDevices() }
+    }
+
+    private func deleteDevice(_ device: Device) {
+        Task { await viewModel.deleteDevice(device) }
     }
 
     // 添加设备表单
     private var addDeviceSheet: some View {
         NavigationView {
             Form {
-                Section("设备信息") {
+                Section(header: Text("设备信息")) {
                     TextField("设备名称", text: $viewModel.newDeviceName)
                         .autocapitalization(.none)
 
@@ -90,7 +88,7 @@ struct DeviceListView: View {
 
                 Section {
                     Button {
-                        Task { await viewModel.addDevice() }
+                        viewModel.addDeviceTapped()
                     } label: {
                         HStack {
                             Spacer()
@@ -122,7 +120,6 @@ struct DeviceCardView: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            // 平台图标 + 状态指示
             ZStack(alignment: .bottomTrailing) {
                 Image(systemName: device.platform.iconName)
                     .font(.system(size: 32))

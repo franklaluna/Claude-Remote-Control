@@ -19,7 +19,6 @@ final class DeviceListViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
 
     init() {
-        // 监听 WebSocket 设备状态变化，更新列表中对应设备
         ws.deviceStatusPublisher
             .sink { [weak self] payload in
                 guard let self, let index = self.devices.firstIndex(where: { $0.id == payload.device_id }) else { return }
@@ -28,7 +27,6 @@ final class DeviceListViewModel: ObservableObject {
             .store(in: &cancellables)
     }
 
-    // 加载设备列表
     func loadDevices() async {
         await MainActor.run { isLoading = true; errorMessage = nil }
         do {
@@ -45,7 +43,10 @@ final class DeviceListViewModel: ObservableObject {
         }
     }
 
-    // 添加设备
+    func addDeviceTapped() {
+        Task { await addDevice() }
+    }
+
     func addDevice() async {
         guard !newDeviceName.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         await MainActor.run { isAdding = true }
@@ -69,10 +70,7 @@ final class DeviceListViewModel: ObservableObject {
         }
     }
 
-    // 删除设备（左滑）
     func deleteDevice(_ device: Device) async {
-        // API 暂无 DELETE /api/devices/:id 端点，先本地移除
-        // TODO: 服务端提供删除端点后调用
         await MainActor.run {
             self.devices.removeAll { $0.id == device.id }
         }
