@@ -1,5 +1,6 @@
 // ============================================================
 // Shared Type Definitions — Claude Remote Control
+// 消息类型对齐 AGENT_PROTOCOL.md v1.0
 // ============================================================
 
 // --- Domain Entities ---
@@ -40,6 +41,8 @@ export interface Task {
   working_directory: string;
   permission_mode: PermissionMode;
   status: TaskStatus;
+  summary?: string;
+  error?: string;
   created_at: Date;
   updated_at: Date;
 }
@@ -61,59 +64,144 @@ export interface TaskResult {
   status: 'completed' | 'failed';
   summary: string;
   files_changed: number;
+  duration_seconds?: number;
   files: FileChangeEntry[];
   error?: string;
 }
 
-// --- WebSocket 消息类型 ---
+// --- WebSocket 消息类型（对齐 AGENT_PROTOCOL.md） ---
 
+/** Agent ↔ Server 协议消息 */
 export type WsMessageType =
-  | 'task:new'
-  | 'task:log'
-  | 'task:status'
-  | 'task:result'
-  | 'device:status'
-  | 'device:online'
-  | 'device:offline'
-  | 'heartbeat'
+  // 认证与注册
   | 'auth'
   | 'auth_ok'
   | 'auth_error'
-  | 'heartbeat_ack';
+  | 'register_device'
+  | 'register_success'
+  // 心跳
+  | 'heartbeat'
+  | 'heartbeat_ack'
+  // 任务生命周期（Server → Agent）
+  | 'task_create'
+  // 任务生命周期（Agent → Server）
+  | 'task_accepted'
+  | 'task_started'
+  | 'task_completed'
+  | 'task_failed'
+  // 执行流（Agent → Server → iOS）
+  | 'task_log'
+  | 'task_progress'
+  | 'file_changed'
+  // iOS → Server
+  | 'cancel_task'
+  // 设备状态（Server → iOS，协议扩展）
+  | 'device:status'
+  | 'device:online'
+  | 'device:offline'
+  // Agent 生命周期
+  | 'agent_offline';
 
+/** 通用消息信封 */
 export interface WsMessage {
   type: WsMessageType;
   payload: unknown;
   timestamp: string;
 }
 
+// --- 认证与注册 Payload ---
+
+export interface WsAuthPayload {
+  token: string;
+  device_id?: string; // Agent 连接时提供
+}
+
+export interface WsRegisterDevicePayload {
+  device_id: string;
+  name: string;
+  platform: 'macos' | 'windows';
+  agent_version: string;
+}
+
+// --- 心跳 Payload ---
+
+export interface WsHeartbeatPayload {
+  device_id: string;
+  cpu?: number;
+  memory?: number;
+  active_task?: boolean;
+}
+
+// --- Server → Agent: 创建任务 ---
+
+export interface WsTaskCreatePayload {
+  task_id: string;
+  title: string;
+  prompt: string;
+  working_directory: string;
+}
+
+// --- Agent → Server: 任务确认 ---
+
+export interface WsTaskAcceptedPayload {
+  task_id: string;
+}
+
+export interface WsTaskStartedPayload {
+  task_id: string;
+}
+
+// --- Agent → Server: 任务日志 ---
+
 export interface WsTaskLogPayload {
   task_id: string;
   message: string;
 }
 
-export interface WsTaskStatusPayload {
+// --- Agent → Server: 任务进度 ---
+
+export interface WsTaskProgressPayload {
   task_id: string;
-  status: TaskStatus;
+  percent: number;
 }
 
-export interface WsTaskResultPayload {
+// --- Agent → Server: 文件变更 ---
+
+export interface WsFileChangedPayload {
   task_id: string;
-  result: TaskResult;
+  file: string;
 }
+
+// --- Agent → Server: 任务完成 ---
+
+export interface WsTaskCompletedPayload {
+  task_id: string;
+  summary: string;
+  files_changed: number;
+  duration_seconds?: number;
+}
+
+// --- Agent → Server: 任务失败 ---
+
+export interface WsTaskFailedPayload {
+  task_id: string;
+  error: string;
+}
+
+// --- iOS → Server: 取消任务 ---
+
+export interface WsCancelTaskPayload {
+  task_id: string;
+}
+
+// --- Server → iOS: 设备状态 ---
 
 export interface WsDeviceStatusPayload {
   device_id: string;
   status: 'online' | 'offline';
-}
-
-export interface WsAuthPayload {
-  token: string;
-  device_id: string;
-}
-
-export interface WsHeartbeatPayload {
-  device_id: string;
+  name?: string;
+  platform?: string;
+  last_seen?: Date;
 }
 
 // --- API 请求/响应类型 ---

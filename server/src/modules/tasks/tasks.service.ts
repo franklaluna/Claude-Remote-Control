@@ -163,17 +163,13 @@ export class TasksService {
     if (!next) return; // 无排队任务
 
     // 通过 WebSocket 向 Agent 推送任务
-    const sent = this.ws.sendToDevice(deviceId, {
-      type: 'task:new',
-      payload: {
-        task_id: next.id,
-        title: next.title,
-        prompt: next.prompt,
-        working_directory: next.working_directory,
-        permission_mode: next.permission_mode,
-      },
-      timestamp: new Date().toISOString(),
-    });
+    const sent = this.ws.sendTaskCreate(
+      deviceId,
+      next.id,
+      next.title,
+      next.prompt,
+      next.working_directory,
+    );
 
     if (sent) {
       // Agent 在线，任务转为 running

@@ -1,4 +1,6 @@
 // WebSocket 网关 — Agent 与 iOS 客户端双向消息中继
+// 消息类型对齐 AGENT_PROTOCOL.md v1.0
+
 import {
   WebSocketGateway,
   WebSocketServer,
@@ -10,19 +12,23 @@ import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { Logger } from '@nestjs/common';
 import { PrismaService } from './prisma.service';
-import { TasksService } from '../modules/tasks/tasks.service';
-import { DevicesService } from '../modules/devices/devices.service';
 import {
   WsMessage,
   WsAuthPayload,
   WsTaskLogPayload,
-  WsTaskStatusPayload,
-  WsTaskResultPayload,
+  WsTaskProgressPayload,
+  WsFileChangedPayload,
+  WsTaskCompletedPayload,
+  WsTaskFailedPayload,
+  WsTaskAcceptedPayload,
+  WsTaskStartedPayload,
+  WsCancelTaskPayload,
+  WsHeartbeatPayload,
 } from '../types';
 
-// 连接池: device_id → Socket（Agent 连接）
+// Agent 连接池: device_id → Socket
 const agentSockets = new Map<string, Socket>();
-// 连接池: user_id → Set<Socket>（iOS 客户端连接）
+// iOS 客户端连接池: user_id → Set<Socket>
 const clientSockets = new Map<string, Set<Socket>>();
 
 @WebSocketGateway({
@@ -46,8 +52,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   // ---- 连接生命周期 ----
 
   handleConnection(client: Socket) {
-    this.logger.log(`新连接: ${client.id} (transport: ${client.conn.transport.name})`);
-    // 必须在 5 秒内发送 auth 消息进行认证
+    this.logger.log(`新连接: ${client.id}`);
     this.pendingAuth.set(
       client.id,
       setTimeout(() => {
@@ -62,12 +67,12 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     clearTimeout(this.pendingAuth.get(client.id));
     this.pendingAuth.delete(client.id);
 
-    // 从 Agent 池移除
+    // 从 Agent 池移除 → 标记设备离线
     for (const [deviceId, socket] of agentSockets) {
       if (socket.id === client.id) {
         agentSockets.delete(deviceId);
         this.updateDeviceStatus(deviceId, 'offline');
-        this.broadcastToUserClients(deviceId, {
+        this.broadcastToUserByDevice(deviceId, {
           type: 'device:offline',
           payload: { device_id: deviceId, status: 'offline' },
           timestamp: new Date().toISOString(),
@@ -82,58 +87,47 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       if (sockets.has(client)) {
         sockets.delete(client);
         if (sockets.size === 0) clientSockets.delete(userId);
-        this.logger.log(`iOS 客户端断开: user=${userId}`);
         return;
       }
     }
   }
 
-  // ---- 认证 ----
+  // ===================================================================
+  // 认证
+  // ===================================================================
 
   @SubscribeMessage('auth')
   async handleAuth(client: Socket, raw: string | WsMessage) {
-    // socket.io 客户端可能发送 JSON 字符串或已解析的对象
     const message: WsMessage = typeof raw === 'string' ? JSON.parse(raw) : raw;
     const payload = message.payload as WsAuthPayload;
 
     try {
-      // 验证 JWT
+      // BLOCK-4: 真实 JWT 验证
       const decoded = this.jwtService.verify(payload.token);
       const userId: string = decoded.id;
 
       clearTimeout(this.pendingAuth.get(client.id));
       this.pendingAuth.delete(client.id);
 
+      // 存入 socket.data 供后续消息使用
+      (client as any)._userId = userId;
+
       if (payload.device_id) {
-        // Agent 连接 — 验证设备归属
+        // Agent 连接 → 验证设备归属
         const device = await this.prisma.device.findUnique({
           where: { id: payload.device_id },
         });
         if (!device || device.user_id !== userId) {
-          this.logger.warn(`Agent 认证失败: device=${payload.device_id}`);
           client.emit('auth_error', { message: '设备不存在或无权访问' });
           client.disconnect();
           return;
         }
 
-        // 注册 Agent 连接
-        agentSockets.set(payload.device_id, client);
-        await this.updateDeviceStatus(payload.device_id, 'online');
-
-        // 广播设备上线
-        this.broadcastToUserClients(payload.device_id, {
-          type: 'device:online',
-          payload: { device_id: payload.device_id, status: 'online' },
-          timestamp: new Date().toISOString(),
-        });
-
-        // 上线后检查是否有排队任务需要派发
-        await this.dispatchQueuedTasks(payload.device_id);
-
-        client.emit('auth_ok', { message: 'Agent 认证成功' });
+        (client as any)._deviceId = payload.device_id;
+        client.emit('auth_ok', { message: '认证成功，请发送 register_device' });
         this.logger.log(`Agent 已认证: device=${payload.device_id}`);
       } else {
-        // iOS 客户端连接 — 按 user_id 注册
+        // iOS 客户端 → 注册到客户端池
         if (!clientSockets.has(userId)) {
           clientSockets.set(userId, new Set());
         }
@@ -167,98 +161,220 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  // ---- 心跳 ----
+  // ===================================================================
+  // 设备注册（Agent 初始化，按协议在 auth 之后调用）
+  // ===================================================================
+
+  @SubscribeMessage('register_device')
+  async handleRegisterDevice(client: Socket, raw: string | WsMessage) {
+    const deviceId = (client as any)._deviceId;
+    if (!deviceId) {
+      client.emit('register_success', { status: 'error', message: '请先完成认证' });
+      return;
+    }
+
+    // 注册到 Agent 连接池
+    agentSockets.set(deviceId, client);
+    await this.updateDeviceStatus(deviceId, 'online');
+
+    // 广播设备上线
+    this.broadcastToUserByDevice(deviceId, {
+      type: 'device:online',
+      payload: { device_id: deviceId, status: 'online' },
+      timestamp: new Date().toISOString(),
+    });
+
+    client.emit('register_success', { status: 'ok' });
+
+    // 上线后检查并派发排队任务
+    await this.dispatchQueuedTasks(deviceId);
+    this.logger.log(`设备已注册: device=${deviceId}`);
+  }
+
+  // ===================================================================
+  // 心跳（含系统指标）
+  // ===================================================================
 
   @SubscribeMessage('heartbeat')
   async handleHeartbeat(client: Socket, raw: string | WsMessage) {
     const message: WsMessage = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    const payload = message.payload as { device_id?: string };
+    const payload = message.payload as WsHeartbeatPayload;
 
     if (payload.device_id) {
-      // 更新最后在线时间
       await this.prisma.device.update({
         where: { id: payload.device_id },
         data: { last_seen: new Date() },
-      });
+      }).catch(() => {});
     }
     client.emit('heartbeat_ack', { timestamp: new Date().toISOString() });
   }
 
-  // ---- 任务日志转发 ----
+  // ===================================================================
+  // 任务确认与启动（Agent → Server）
+  // ===================================================================
 
-  @SubscribeMessage('task:log')
-  async handleTaskLog(_client: Socket, raw: string | WsMessage) {
+  @SubscribeMessage('task_accepted')
+  async handleTaskAccepted(client: Socket, raw: string | WsMessage) {
+    const message: WsMessage = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    const payload = message.payload as WsTaskAcceptedPayload;
+    this.logger.log(`任务已确认: ${payload.task_id}`);
+    await this.relayToTaskOwner(payload.task_id, message);
+  }
+
+  @SubscribeMessage('task_started')
+  async handleTaskStarted(client: Socket, raw: string | WsMessage) {
+    const message: WsMessage = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    const payload = message.payload as WsTaskStartedPayload;
+
+    await this.prisma.task.update({
+      where: { id: payload.task_id },
+      data: { status: 'running' },
+    }).catch(() => {});
+
+    await this.relayToTaskOwner(payload.task_id, message);
+  }
+
+  // ===================================================================
+  // 任务执行流（Agent → Server → iOS）
+  // ===================================================================
+
+  @SubscribeMessage('task_log')
+  async handleTaskLog(client: Socket, raw: string | WsMessage) {
     const message: WsMessage = typeof raw === 'string' ? JSON.parse(raw) : raw;
     const payload = message.payload as WsTaskLogPayload;
 
-    // 持久化日志
+    // 持久化
     await this.prisma.taskLog.create({
-      data: {
-        task_id: payload.task_id,
-        message: payload.message,
-      },
-    });
+      data: { task_id: payload.task_id, message: payload.message },
+    }).catch(() => {});
 
-    // 转发给 iOS 客户端
-    const task = await this.prisma.task.findUnique({ where: { id: payload.task_id } });
-    if (task) {
-      this.broadcastToUserClientsById(task.user_id, message);
-    }
+    await this.relayToTaskOwner(payload.task_id, message);
   }
 
-  // ---- 任务状态转发 ----
-
-  @SubscribeMessage('task:status')
-  async handleTaskStatus(_client: Socket, raw: string | WsMessage) {
+  @SubscribeMessage('task_progress')
+  async handleTaskProgress(client: Socket, raw: string | WsMessage) {
     const message: WsMessage = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    const payload = message.payload as WsTaskStatusPayload;
-
-    // 更新任务状态
-    await this.prisma.task.update({
-      where: { id: payload.task_id },
-      data: { status: payload.status },
-    });
-
-    // 转发给 iOS 客户端
-    const task = await this.prisma.task.findUnique({ where: { id: payload.task_id } });
-    if (task) {
-      this.broadcastToUserClientsById(task.user_id, message);
-
-      // 任务结束 → 调度下一个排队任务
-      if (payload.status === 'completed' || payload.status === 'failed') {
-        await this.dispatchQueuedTasks(task.device_id);
-      }
-    }
+    await this.relayToTaskOwner(
+      (message.payload as WsTaskProgressPayload).task_id,
+      message,
+    );
   }
 
-  // ---- 任务结果接收 ----
-
-  @SubscribeMessage('task:result')
-  async handleTaskResult(_client: Socket, raw: string | WsMessage) {
+  @SubscribeMessage('file_changed')
+  async handleFileChanged(client: Socket, raw: string | WsMessage) {
     const message: WsMessage = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    const payload = message.payload as WsTaskResultPayload;
+    await this.relayToTaskOwner(
+      (message.payload as WsFileChangedPayload).task_id,
+      message,
+    );
+  }
 
-    // 更新任务结果
+  // ===================================================================
+  // 任务完成/失败（Agent → Server）
+  // ===================================================================
+
+  @SubscribeMessage('task_completed')
+  async handleTaskCompleted(client: Socket, raw: string | WsMessage) {
+    const message: WsMessage = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    const payload = message.payload as WsTaskCompletedPayload;
+
     await this.prisma.task.update({
       where: { id: payload.task_id },
       data: {
-        status: payload.result.status,
-        summary: payload.result.summary || null,
-        error: payload.result.error || null,
+        status: 'completed',
+        summary: payload.summary,
       },
-    });
+    }).catch(() => {});
 
-    // 转发给 iOS 客户端
+    await this.relayToTaskOwner(payload.task_id, message);
+
+    // 调度下一个排队任务
     const task = await this.prisma.task.findUnique({ where: { id: payload.task_id } });
-    if (task) {
-      this.broadcastToUserClientsById(task.user_id, message);
-
-      // 调度下一个排队任务
-      await this.dispatchQueuedTasks(task.device_id);
-    }
+    if (task) await this.dispatchQueuedTasks(task.device_id);
   }
 
-  // ---- 公共方法（供 REST API 调用） ----
+  @SubscribeMessage('task_failed')
+  async handleTaskFailed(client: Socket, raw: string | WsMessage) {
+    const message: WsMessage = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    const payload = message.payload as WsTaskFailedPayload;
+
+    await this.prisma.task.update({
+      where: { id: payload.task_id },
+      data: { status: 'failed', error: payload.error },
+    }).catch(() => {});
+
+    await this.relayToTaskOwner(payload.task_id, message);
+
+    // 调度下一个排队任务
+    const task = await this.prisma.task.findUnique({ where: { id: payload.task_id } });
+    if (task) await this.dispatchQueuedTasks(task.device_id);
+  }
+
+  // ===================================================================
+  // 取消任务（iOS → Server）
+  // ===================================================================
+
+  @SubscribeMessage('cancel_task')
+  async handleCancelTask(client: Socket, raw: string | WsMessage) {
+    const message: WsMessage = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    const payload = message.payload as WsCancelTaskPayload;
+    const userId = (client as any)._userId;
+
+    const task = await this.prisma.task.findUnique({ where: { id: payload.task_id } });
+    if (!task || task.user_id !== userId) return;
+
+    if (task.status !== 'queued') return; // 只能取消排队任务
+
+    await this.prisma.task.update({
+      where: { id: payload.task_id },
+      data: { status: 'cancelled' },
+    });
+
+    // 通知 Agent 取消（如果已派发）
+    this.sendToDevice(task.device_id, {
+      type: 'cancel_task',
+      payload: { task_id: payload.task_id },
+      timestamp: new Date().toISOString(),
+    });
+
+    client.emit('cancel_task', {
+      type: 'cancel_task',
+      payload: { task_id: payload.task_id, status: 'cancelled' },
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  // ===================================================================
+  // Agent 离线通知
+  // ===================================================================
+
+  @SubscribeMessage('agent_offline')
+  async handleAgentOffline(client: Socket, raw: string | WsMessage) {
+    const deviceId = (client as any)._deviceId;
+    if (deviceId) {
+      agentSockets.delete(deviceId);
+      await this.updateDeviceStatus(deviceId, 'offline');
+      this.broadcastToUserByDevice(deviceId, {
+        type: 'device:offline',
+        payload: { device_id: deviceId, status: 'offline' },
+        timestamp: new Date().toISOString(),
+      });
+    }
+    client.disconnect();
+  }
+
+  // ===================================================================
+  // 公共方法（供 REST API / TasksService 调用）
+  // ===================================================================
+
+  /** 向指定设备的 Agent 推送任务创建消息 */
+  sendTaskCreate(deviceId: string, taskId: string, title: string, prompt: string, workingDirectory: string): boolean {
+    return this.sendToDevice(deviceId, {
+      type: 'task_create',
+      payload: { task_id: taskId, title, prompt, working_directory: workingDirectory },
+      timestamp: new Date().toISOString(),
+    });
+  }
 
   /** 向指定设备的 Agent 发送消息 */
   sendToDevice(deviceId: string, message: WsMessage): boolean {
@@ -268,34 +384,29 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return true;
   }
 
-  /** 向指定用户的所有 iOS 客户端广播 */
-  broadcastToUser(userId: string, message: WsMessage) {
-    const sockets = clientSockets.get(userId);
-    if (!sockets) return;
-    for (const socket of sockets) {
-      socket.emit(message.type, message);
-    }
-  }
+  // ===================================================================
+  // 私有方法
+  // ===================================================================
 
-  // ---- 私有方法 ----
-
-  /** 向设备对应的用户广播（需查询设备归属） */
-  private async broadcastToUserClients(deviceId: string, message: WsMessage) {
+  /** 向指定设备的所属用户的所有 iOS 客户端广播 */
+  private async broadcastToUserByDevice(deviceId: string, message: WsMessage) {
     const device = await this.prisma.device.findUnique({ where: { id: deviceId } });
     if (!device) return;
-    this.broadcastToUserClientsById(device.user_id, message);
-  }
-
-  /** 向指定 userId 的所有 iOS 客户端广播 */
-  private broadcastToUserClientsById(userId: string, message: WsMessage) {
-    const sockets = clientSockets.get(userId);
+    const sockets = clientSockets.get(device.user_id);
     if (!sockets) return;
-    for (const socket of sockets) {
-      socket.emit(message.type, message);
-    }
+    for (const socket of sockets) socket.emit(message.type, message);
   }
 
-  /** 更新设备在线状态并广播 */
+  /** 向任务所属用户广播 */
+  private async relayToTaskOwner(taskId: string, message: WsMessage) {
+    const task = await this.prisma.task.findUnique({ where: { id: taskId } });
+    if (!task) return;
+    const sockets = clientSockets.get(task.user_id);
+    if (!sockets) return;
+    for (const socket of sockets) socket.emit(message.type, message);
+  }
+
+  /** 更新设备在线状态 */
   private async updateDeviceStatus(deviceId: string, status: 'online' | 'offline') {
     try {
       await this.prisma.device.update({
@@ -307,9 +418,8 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  /** Agent 上线后调度排队任务 */
+  /** Agent 上线/任务结束后调度排队任务 */
   private async dispatchQueuedTasks(deviceId: string) {
-    // 检查是否已有运行中任务
     const running = await this.prisma.task.findFirst({
       where: { device_id: deviceId, status: 'running' },
     });
@@ -321,29 +431,31 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
     if (!next) return;
 
-    const sent = this.sendToDevice(deviceId, {
-      type: 'task:new',
-      payload: {
-        task_id: next.id,
-        title: next.title,
-        prompt: next.prompt,
-        working_directory: next.working_directory,
-        permission_mode: next.permission_mode,
-      },
-      timestamp: new Date().toISOString(),
-    });
+    const sent = this.sendTaskCreate(
+      deviceId,
+      next.id,
+      next.title,
+      next.prompt,
+      next.working_directory,
+    );
 
     if (sent) {
       await this.prisma.task.update({
         where: { id: next.id },
         data: { status: 'running' },
       });
-      this.broadcastToUserClientsById(next.user_id, {
-        type: 'task:status',
-        payload: { task_id: next.id, status: 'running' },
-        timestamp: new Date().toISOString(),
-      });
-      this.logger.log(`任务 ${next.id} 已派发给 ${deviceId}`);
+
+      const socks = clientSockets.get(next.user_id);
+      if (socks) {
+        for (const s of socks) {
+          s.emit('task_started', {
+            type: 'task_started',
+            payload: { task_id: next.id },
+            timestamp: new Date().toISOString(),
+          });
+        }
+      }
+      this.logger.log(`任务 ${next.id} 已派发给设备 ${deviceId}`);
     }
   }
 }

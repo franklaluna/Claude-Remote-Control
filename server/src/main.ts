@@ -19,15 +19,18 @@ async function bootstrap() {
     }),
   );
 
-  // CORS（开发环境允许所有来源）
-  app.enableCors({
-    origin: process.env.CORS_ORIGIN || '*',
-    credentials: true,
-  });
+  // CORS（仅当显式配置 CORS_ORIGIN 时启用，生产环境默认拒绝跨域）
+  const corsOrigin = process.env.CORS_ORIGIN;
+  if (corsOrigin) {
+    app.enableCors({
+      origin: corsOrigin === '*' ? '*' : corsOrigin.split(',').map((s) => s.trim()),
+      credentials: true,
+    });
+  }
 
   const port = process.env.PORT || 3000;
   await app.listen(port);
-  console.log(`Relay Server running on port ${port}`);
+  console.log(`Relay Server running on port ${port}${corsOrigin ? ' (CORS: ' + corsOrigin + ')' : ' (CORS disabled)'}`);
 }
 
 bootstrap();

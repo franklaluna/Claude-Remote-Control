@@ -1,0 +1,22 @@
+# 环境变量（含密钥，禁止提交）
+.env
+
+# 依赖
+node_modules/
+
+# 构建产物
+dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Prisma
+node_modules/.prisma/
