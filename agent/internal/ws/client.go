@@ -130,6 +130,20 @@ func (c *Client) authenticate() error {
 	}
 
 	log.Printf("[ws] 认证成功")
+
+	// Send register_device to set device online
+	regMsg := Message{
+		Type: "register_device",
+		Payload: map[string]string{
+			"device_id": c.deviceID,
+		},
+		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
+	}
+	if err := c.conn.WriteJSON(regMsg); err != nil {
+		return fmt.Errorf("发送注册消息失败: %w", err)
+	}
+	log.Printf("[ws] 已发送设备注册: device_id=%s", c.deviceID)
+
 	return nil
 }
 

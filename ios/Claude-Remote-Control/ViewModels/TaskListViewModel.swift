@@ -1,14 +1,12 @@
 import Foundation
 import Combine
 
-// 任务列表 ViewModel
 final class TaskListViewModel: ObservableObject {
     @Published var tasks: [AppTask] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var selectedTab: TaskListTab = .running
 
-    // 三个 Tab
     enum TaskListTab: String, CaseIterable {
         case running, completed, failed
         var displayName: String {
@@ -20,7 +18,6 @@ final class TaskListViewModel: ObservableObject {
         }
     }
 
-    // 根据 Tab 筛选
     var filteredTasks: [AppTask] {
         switch selectedTab {
         case .running: return tasks.filter { $0.status == .queued || $0.status == .running }
@@ -33,9 +30,10 @@ final class TaskListViewModel: ObservableObject {
     private let ws = WebSocketService.shared
     private var cancellables = Set<AnyCancellable>()
 
-    init() {
-        // 监听 WebSocket 任务状态更新
+    func subscribe() {
+        guard cancellables.isEmpty else { return }
         ws.statusPublisher
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] payload in
                 guard let self, let index = self.tasks.firstIndex(where: { $0.id == payload.task_id }) else { return }
                 if let status = TaskStatus(rawValue: payload.status) { self.tasks[index].status = status }
@@ -51,6 +49,7 @@ final class TaskListViewModel: ObservableObject {
                 self.tasks = response.tasks.sorted { $0.created_at > $1.created_at }
                 self.isLoading = false
             }
+            subscribe()
         } catch {
             await MainActor.run {
                 self.errorMessage = error.localizedDescription
@@ -59,7 +58,6 @@ final class TaskListViewModel: ObservableObject {
         }
     }
 
-    // 取消排队中的任务
     func cancelTask(_ task: AppTask) async {
         do {
             _ = try await api.cancelTask(id: task.id)

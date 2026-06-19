@@ -1,13 +1,11 @@
 import Foundation
 import Combine
 
-// 设备列表 ViewModel
 final class DeviceListViewModel: ObservableObject {
     @Published var devices: [Device] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
 
-    // 添加设备表单
     @Published var showAddSheet = false
     @Published var newDeviceName = ""
     @Published var newDevicePlatform: Platform = .macos
@@ -18,8 +16,10 @@ final class DeviceListViewModel: ObservableObject {
     private let ws = WebSocketService.shared
     private var cancellables = Set<AnyCancellable>()
 
-    init() {
+    func subscribe() {
+        guard cancellables.isEmpty else { return }
         ws.deviceStatusPublisher
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] payload in
                 guard let self, let index = self.devices.firstIndex(where: { $0.id == payload.device_id }) else { return }
                 if let status = DeviceStatus(rawValue: payload.status) { self.devices[index].status = status }
@@ -35,6 +35,7 @@ final class DeviceListViewModel: ObservableObject {
                 self.devices = response.devices
                 self.isLoading = false
             }
+            subscribe()
         } catch {
             await MainActor.run {
                 self.errorMessage = error.localizedDescription
@@ -69,6 +70,7 @@ final class DeviceListViewModel: ObservableObject {
     }
 
     func deleteDeviceTapped(_ device: Device) { Task { await deleteDevice(device) } }
+
     func deleteDevice(_ device: Device) async {
         await MainActor.run {
             self.devices.removeAll { $0.id == device.id }

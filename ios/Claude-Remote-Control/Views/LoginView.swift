@@ -4,116 +4,85 @@ struct LoginView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var isLoading = false
-    @State private var errorMessage: String?
-    @AppStorage("auth_token") private var token = ""
-    @State private var isRegistering = false
-    @State private var registered = false
+    @State private var errorMsg = ""
+    @State private var isReg = false
+    var onLogin: (String) -> Void
 
     var body: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 20) {
             Spacer()
-
             Image(systemName: "desktopcomputer.and.arrow.down")
-                .font(.system(size: 64))
+                .font(.system(size: 60))
                 .foregroundColor(.accentColor)
+            Text("Claude Remote").font(.largeTitle).bold()
+            Spacer().frame(height: 20)
 
-            Text("Claude Remote")
-                .font(.largeTitle)
-                .fontWeight(.bold)
+            TextField("邮箱", text: $email)
+                .textContentType(.emailAddress)
+                .keyboardType(.emailAddress)
+                .autocapitalization(.none)
+                .disableAutocorrection(true)
+                .padding(12)
+                .background(Color(.systemGray6))
+                .cornerRadius(10)
+                .padding(.horizontal)
 
-            Text("远程控制 Claude Code")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+            SecureField("密码", text: $password)
+                .textContentType(.password)
+                .padding(12)
+                .background(Color(.systemGray6))
+                .cornerRadius(10)
+                .padding(.horizontal)
 
-            Spacer().frame(height: 24)
-
-            VStack(spacing: 16) {
-                TextField("邮箱", text: $email)
-                    .textContentType(.emailAddress)
-                    .keyboardType(.emailAddress)
-                    .autocapitalization(.none)
-                    .disableAutocorrection(true)
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(10)
-
-                SecureField("密码", text: $password)
-                    .textContentType(.password)
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(10)
-            }
-            .padding(.horizontal)
-
-            if let error = errorMessage {
-                Text(error)
-                    .font(.caption)
-                    .foregroundColor(.red)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
+            if !errorMsg.isEmpty {
+                Text(errorMsg).foregroundColor(.red).font(.caption)
             }
 
             Button {
-                Task { await performAction() }
+                Task { await doAction() }
             } label: {
                 HStack {
-                    if isLoading {
-                        ProgressView()
-                            .tint(.white)
-                    } else {
-                        Text(isRegistering ? "注册" : "登录")
-                    }
+                    if isLoading { ProgressView().tint(.white) }
+                    else { Text(isReg ? "注册" : "登录") }
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(formValid ? Color.accentColor : Color.gray)
+                .background(email.isEmpty || password.count < 6 ? Color.gray : Color.accentColor)
                 .foregroundColor(.white)
                 .cornerRadius(10)
             }
-            .disabled(!formValid || isLoading)
+            .disabled(email.isEmpty || password.count < 6 || isLoading)
             .padding(.horizontal)
 
-            Button(isRegistering ? "已有账号？登录" : "没有账号？注册") {
-                isRegistering.toggle()
-                errorMessage = nil
+            Button(isReg ? "已有账号？登录" : "没有账号？注册") {
+                isReg.toggle()
+                errorMsg = ""
             }
             .font(.footnote)
-
             Spacer()
         }
-        .padding()
     }
 
-    private var formValid: Bool {
-        !email.trimmingCharacters(in: .whitespaces).isEmpty && password.count >= 6
-    }
-
-    private func performAction() async {
+    func doAction() async {
         isLoading = true
-        errorMessage = nil
+        errorMsg = ""
+        let host = UserDefaults.standard.string(forKey: "server_host") ?? "192.168.11.210:8080"
+        APIService.shared.configure(baseURL: URL(string: "http://\(host)/api")!, token: nil)
 
         do {
-            let response: LoginResponse
-            if isRegistering {
-                response = try await APIService.shared.registerUser(
-                    email: email.trimmingCharacters(in: .whitespaces),
-                    password: password
-                )
+            let rsp: LoginResponse
+            if isReg {
+                rsp = try await APIService.shared.registerUser(email: email, password: password)
             } else {
-                response = try await APIService.shared.login(
-                    email: email.trimmingCharacters(in: .whitespaces),
-                    password: password
-                )
+                rsp = try await APIService.shared.login(email: email, password: password)
             }
-
+            UserDefaults.standard.set(rsp.token, forKey: "auth_token")
             await MainActor.run {
-                APIService.shared.setToken(response.token)
-                self.token = response.token
-                registered = true
+                onLogin(rsp.token)
             }
         } catch {
             await MainActor.run {
-                errorMessage = error.localizedDescription
+                errorMsg = error.localizedDescription
                 isLoading = false
             }
         }

@@ -1,0 +1,8 @@
+{
+  "server_url": "ws://192.168.11.210:8080/ws",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImU3OTliNDMyLWI5NmQtNDQ5OC1iMjcwLTIxMWExNDdjNTk4YiIsImVtYWlsIjoiYWRtaW5AdGVzdC5jb20iLCJpYXQiOjE3ODE4OTQ1MTMsImV4cCI6MTc4MjQ5OTMxM30.SVxTv_63aqiyz6bYYYQs3-EczjPCgPjsDiA3P7sJREk",
+  "device_id": "1ccf075c-1ced-4892-92c8-47203ef495da",
+  "device_name": "MacBook Pro",
+  "platform": "macos",
+  "version": "1.0.0"
+}

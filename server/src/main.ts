@@ -22,7 +22,7 @@ async function bootstrap() {
     }),
   );
 
-  // CORS（仅当显式配置 CORS_ORIGIN 时启用，生产环境默认拒绝跨域）
+  // CORS
   const corsOrigin = process.env.CORS_ORIGIN;
   if (corsOrigin) {
     app.enableCors({
@@ -32,8 +32,9 @@ async function bootstrap() {
   }
 
   const port = process.env.PORT || 3000;
-  await app.listen(port);
-  console.log(`Relay Server running on port ${port}${corsOrigin ? ' (CORS: ' + corsOrigin + ')' : ' (CORS disabled)'}`);
+  // 强制 IPv4 绑定（0.0.0.0），解决某些网络环境下 dual-stack 问题
+  await app.listen(port, '0.0.0.0');
+  console.log(`Relay Server running on port ${port} (IPv4)${corsOrigin ? ' (CORS: ' + corsOrigin + ')' : ''}`);
 }
 
 bootstrap();
