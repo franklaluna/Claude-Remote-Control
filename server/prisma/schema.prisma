@@ -1,0 +1,75 @@
+// Prisma Schema — Claude Remote Control Relay Server
+// 数据库: MySQL (192.168.2.200:3306 / 192.168.2.201:3306)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// --- 用户表 ---
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  password_hash String
+  created_at    DateTime @default(now()) @map("created_at")
+
+  devices Device[]
+  tasks   Task[]
+
+  @@map("users")
+}
+
+// --- 设备表 ---
+model Device {
+  id        String   @id @default(uuid())
+  user_id   String
+  name      String
+  platform  String   // "macos" | "windows"
+  status    String   @default("offline") // "online" | "offline"
+  version   String   @default("1.0.0")
+  last_seen DateTime @default(now()) @map("last_seen")
+  created_at DateTime @default(now()) @map("created_at")
+
+  user  User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  tasks Task[]
+
+  @@map("devices")
+}
+
+// --- 任务表 ---
+model Task {
+  id                String   @id @default(uuid())
+  user_id           String
+  device_id         String
+  title             String   @db.VarChar(255)
+  prompt            String   @db.Text
+  working_directory String   @default("") @map("working_directory") @db.VarChar(500)
+  permission_mode   String   @default("default") @map("permission_mode") @db.VarChar(20)
+  status            String   @default("queued") @db.VarChar(20)
+  summary           String?  @db.Text
+  error             String?  @db.Text
+  created_at        DateTime @default(now()) @map("created_at")
+  updated_at        DateTime @updatedAt @map("updated_at")
+
+  user   User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  device Device    @relation(fields: [device_id], references: [id], onDelete: Cascade)
+  logs   TaskLog[]
+
+  @@map("tasks")
+}
+
+// --- 任务日志表 ---
+model TaskLog {
+  id        String   @id @default(uuid())
+  task_id   String
+  timestamp DateTime @default(now())
+  message   String   @db.Text
+
+  task Task @relation(fields: [task_id], references: [id], onDelete: Cascade)
+
+  @@map("task_logs")
+}
