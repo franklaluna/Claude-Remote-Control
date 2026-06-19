@@ -7,7 +7,7 @@ final class CreateTaskViewModel: ObservableObject {
     @Published var title = ""
     @Published var prompt = ""
     @Published var selectedDeviceID: String = ""
-    @Published var workingDirectory = "~/"
+    @Published var workingDirectory = "/Users/gyfan/claude"
     @Published var permissionMode: PermissionMode = .default
 
     // 可用设备列表（从 DeviceListViewModel 传入或单独加载）
@@ -71,7 +71,7 @@ final class CreateTaskViewModel: ObservableObject {
                 // 重置表单
                 self.title = ""
                 self.prompt = ""
-                self.workingDirectory = "~/"
+                self.workingDirectory = "/Users/gyfan/claude"
                 self.permissionMode = .default
             }
         } catch {

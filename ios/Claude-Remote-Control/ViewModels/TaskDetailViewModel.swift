@@ -1,20 +1,21 @@
 import Foundation
 import Combine
 
-// 任务详情 ViewModel
 final class TaskDetailViewModel: ObservableObject {
     @Published var task: AppTask?
     @Published var logs: [TaskLog] = []
     @Published var result: TaskResult?
     @Published var isLoading = false
     @Published var errorMessage: String?
+    @Published var continueText = ""
+    @Published var isSending = false
+    @Published var newTaskCreated = false
 
     private let api = APIService.shared
     private let ws = WebSocketService.shared
     private var cancellables = Set<AnyCancellable>()
     private var taskID: String?
 
-    // 加载任务详情
     func loadTask(id: String) async {
         taskID = id
         await MainActor.run { isLoading = true; errorMessage = nil }
@@ -27,6 +28,7 @@ final class TaskDetailViewModel: ObservableObject {
                 self.result = response.result
                 self.isLoading = false
             }
+            subscribeToRealtimeUpdates()
         } catch {
             await MainActor.run {
                 self.errorMessage = error.localizedDescription
@@ -35,11 +37,28 @@ final class TaskDetailViewModel: ObservableObject {
         }
     }
 
-    // 开始订阅 WebSocket 实时更新
-    func subscribeToRealtimeUpdates() {
+    func sendContinue() async {
+        guard let id = taskID, !continueText.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        await MainActor.run { isSending = true }
+
+        do {
+            let response = try await api.continueTask(id: id, prompt: continueText.trimmingCharacters(in: .whitespaces))
+            await MainActor.run {
+                self.isSending = false
+                self.continueText = ""
+                self.newTaskCreated = true
+            }
+        } catch {
+            await MainActor.run {
+                self.errorMessage = error.localizedDescription
+                self.isSending = false
+            }
+        }
+    }
+
+    private func subscribeToRealtimeUpdates() {
         cancellables.removeAll()
 
-        // 日志
         ws.logPublisher
             .filter { [weak self] in $0.task_id == self?.taskID }
             .sink { [weak self] payload in
@@ -54,7 +73,6 @@ final class TaskDetailViewModel: ObservableObject {
             }
             .store(in: &cancellables)
 
-        // 状态
         ws.statusPublisher
             .filter { [weak self] in $0.task_id == self?.taskID }
             .sink { [weak self] payload in
@@ -62,7 +80,6 @@ final class TaskDetailViewModel: ObservableObject {
             }
             .store(in: &cancellables)
 
-        // 结果
         ws.resultPublisher
             .filter { [weak self] in $0.task_id == self?.taskID }
             .sink { [weak self] payload in
@@ -75,9 +92,5 @@ final class TaskDetailViewModel: ObservableObject {
                 )
             }
             .store(in: &cancellables)
-    }
-
-    func unsubscribe() {
-        cancellables.removeAll()
     }
 }

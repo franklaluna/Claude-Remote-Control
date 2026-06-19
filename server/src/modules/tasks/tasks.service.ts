@@ -145,6 +145,45 @@ export class TasksService {
     }
   }
 
+  /** 在已有任务基础上继续对话（创建子任务，携带上下文） */
+  async continueTask(userId: string, parentTaskId: string, followUpPrompt: string): Promise<CreateTaskResponse> {
+    const parent = await this.prisma.task.findUnique({ where: { id: parentTaskId } });
+    if (!parent || parent.user_id !== userId) {
+      throw new NotFoundException('任务不存在');
+    }
+
+    // 拼接上下文：原 prompt + 执行日志摘要 → 新 prompt
+    const logs = await this.prisma.taskLog.findMany({
+      where: { task_id: parentTaskId },
+      orderBy: { timestamp: 'asc' },
+    });
+    const context = logs.map(l => l.message).join('\n');
+    const fullPrompt = `【继续之前的对话】
+
+之前的任务: ${parent.title}
+之前的执行结果:
+${context || parent.summary || '(无日志)'}
+
+新的指令: ${followUpPrompt}
+
+请基于以上上下文继续执行。`;
+
+    const task = await this.prisma.task.create({
+      data: {
+        user_id: userId,
+        device_id: parent.device_id,
+        title: `↳ ${parent.title}`,
+        prompt: fullPrompt,
+        working_directory: parent.working_directory,
+        permission_mode: parent.permission_mode,
+        status: 'queued',
+      },
+    });
+
+    await this.tryDispatchNext(parent.device_id);
+    return { task: task as Task };
+  }
+
   // ---- 内部方法 ----
 
   /** FIFO 调度：取出设备上最早排队任务，若设备在线则派发 */

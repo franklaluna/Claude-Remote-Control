@@ -131,9 +131,15 @@ final class APIService {
     func cancelTask(id: String) async throws -> CancelTaskResponse {
         try await request(method: "POST", path: "tasks/\(id)/cancel")
     }
+    func continueTask(id: String, prompt: String) async throws -> CreateTaskResponse {
+        let body = ContinueTaskRequest(prompt: prompt)
+        return try await request(method: "POST", path: "tasks/\(id)/continue", body: body)
+    }
+}
+struct ContinueTaskRequest: Codable {
+    let prompt: String
 }
 
-// 类型擦除包装器，用于任意 Encodable 值
 private struct AnyEncodable: Encodable {
     let value: any Encodable
 

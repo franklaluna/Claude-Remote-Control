@@ -4,6 +4,7 @@ import { TasksService } from './tasks.service';
 import { JwtAuthGuard, JwtPayload } from '../../common/guards/jwt-auth.guard';
 import { User } from '../../common/decorators/user.decorator';
 import { CreateTaskDto } from './dto/create-task.dto';
+import { ContinueTaskDto } from './dto/continue-task.dto';
 import {
   CreateTaskResponse,
   GetTaskResponse,
@@ -49,5 +50,14 @@ export class TasksController {
     @Param('id') id: string,
   ): Promise<CancelTaskResponse> {
     return this.tasksService.cancel(user.id, id);
+  }
+
+  @Post(':id/continue')
+  async continue(
+    @User() user: JwtPayload,
+    @Param('id') id: string,
+    @Body() body: ContinueTaskDto,
+  ): Promise<CreateTaskResponse> {
+    return this.tasksService.continueTask(user.id, id, body.prompt);
   }
 }

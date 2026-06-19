@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct LoginView: View {
+    @AppStorage("saved_email") private var savedEmail = ""
     @State private var email = ""
     @State private var password = ""
     @State private var isLoading = false
@@ -61,6 +62,7 @@ struct LoginView: View {
             .font(.footnote)
             Spacer()
         }
+        .onAppear { email = savedEmail }
     }
 
     func doAction() async {
@@ -76,6 +78,8 @@ struct LoginView: View {
             } else {
                 rsp = try await APIService.shared.login(email: email, password: password)
             }
+            // Save email for next time
+            savedEmail = email
             UserDefaults.standard.set(rsp.token, forKey: "auth_token")
             await MainActor.run {
                 onLogin(rsp.token)

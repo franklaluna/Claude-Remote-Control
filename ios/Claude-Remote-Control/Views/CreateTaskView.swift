@@ -2,13 +2,18 @@ import SwiftUI
 
 struct CreateTaskView: View {
     @StateObject private var viewModel = CreateTaskViewModel()
+    @FocusState private var focusedField: Field?
+
+    enum Field { case title, prompt, dir }
 
     var body: some View {
         NavigationView {
             Form {
                 Section("任务信息") {
                     TextField("任务标题", text: $viewModel.title)
+                        .focused($focusedField, equals: .title)
                     TextField("Prompt", text: $viewModel.prompt, axis: .vertical)
+                        .focused($focusedField, equals: .prompt)
                         .lineLimit(3...10)
                     Picker("设备", selection: $viewModel.selectedDeviceID) {
                         if viewModel.availableDevices.isEmpty {
@@ -20,6 +25,7 @@ struct CreateTaskView: View {
                         }
                     }
                     TextField("工作目录", text: $viewModel.workingDirectory)
+                        .focused($focusedField, equals: .dir)
                     Picker("权限", selection: $viewModel.permissionMode) {
                         ForEach(PermissionMode.allCases, id: \.self) { mode in
                             Text(mode.displayName).tag(mode)
@@ -33,6 +39,7 @@ struct CreateTaskView: View {
 
                 Section {
                     Button {
+                        focusedField = nil  // dismiss keyboard
                         Task { await viewModel.submitTask() }
                     } label: {
                         HStack {
