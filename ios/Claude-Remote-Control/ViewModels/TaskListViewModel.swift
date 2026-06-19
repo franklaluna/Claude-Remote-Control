@@ -3,7 +3,7 @@ import Combine
 
 // 任务列表 ViewModel
 final class TaskListViewModel: ObservableObject {
-    @Published var tasks: [Task] = []
+    @Published var tasks: [AppTask] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var selectedTab: TaskListTab = .running
@@ -21,7 +21,7 @@ final class TaskListViewModel: ObservableObject {
     }
 
     // 根据 Tab 筛选
-    var filteredTasks: [Task] {
+    var filteredTasks: [AppTask] {
         switch selectedTab {
         case .running: return tasks.filter { $0.status == .queued || $0.status == .running }
         case .completed: return tasks.filter { $0.status == .completed }
@@ -60,7 +60,7 @@ final class TaskListViewModel: ObservableObject {
     }
 
     // 取消排队中的任务
-    func cancelTask(_ task: Task) async {
+    func cancelTask(_ task: AppTask) async {
         do {
             _ = try await api.cancelTask(id: task.id)
             await loadTasks()

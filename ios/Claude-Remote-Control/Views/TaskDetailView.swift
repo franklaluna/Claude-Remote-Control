@@ -42,7 +42,7 @@ struct TaskDetailView: View {
 
     // MARK: - 状态区域
 
-    private func statusSection(_ task: Task) -> some View {
+    private func statusSection(_ task: AppTask) -> some View {
         Section("状态") {
             HStack {
                 Text("任务状态")

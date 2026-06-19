@@ -37,7 +37,7 @@ enum PermissionMode: String, Codable, CaseIterable {
 }
 
 // 任务
-struct Task: Codable, Identifiable, Equatable {
+struct AppTask: Codable, Identifiable, Equatable {
     let id: String
     let user_id: String
     let device_id: String

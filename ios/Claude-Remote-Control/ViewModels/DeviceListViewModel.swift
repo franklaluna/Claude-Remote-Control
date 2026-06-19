@@ -43,9 +43,7 @@ final class DeviceListViewModel: ObservableObject {
         }
     }
 
-    func addDeviceTapped() {
-        Task { await addDevice() }
-    }
+    func addDeviceTapped() { Task { await addDevice() } }
 
     func addDevice() async {
         guard !newDeviceName.trimmingCharacters(in: .whitespaces).isEmpty else { return }
@@ -70,6 +68,7 @@ final class DeviceListViewModel: ObservableObject {
         }
     }
 
+    func deleteDeviceTapped(_ device: Device) { Task { await deleteDevice(device) } }
     func deleteDevice(_ device: Device) async {
         await MainActor.run {
             self.devices.removeAll { $0.id == device.id }

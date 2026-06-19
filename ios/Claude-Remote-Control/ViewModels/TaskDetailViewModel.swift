@@ -3,7 +3,7 @@ import Combine
 
 // 任务详情 ViewModel
 final class TaskDetailViewModel: ObservableObject {
-    @Published var task: Task?
+    @Published var task: AppTask?
     @Published var logs: [TaskLog] = []
     @Published var result: TaskResult?
     @Published var isLoading = false

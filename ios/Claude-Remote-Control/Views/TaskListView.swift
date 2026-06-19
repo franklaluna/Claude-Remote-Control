@@ -76,7 +76,7 @@ struct TaskListView: View {
 
 // 任务卡片视图
 struct TaskCardView: View {
-    let task: Task
+    let task: AppTask
 
     var body: some View {
         HStack(spacing: 12) {

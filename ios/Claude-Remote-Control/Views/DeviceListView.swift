@@ -66,7 +66,7 @@ struct DeviceListView: View {
     }
 
     private func deleteDevice(_ device: Device) {
-        Task { await viewModel.deleteDevice(device) }
+        viewModel.deleteDeviceTapped(device)
     }
 
     // 添加设备表单

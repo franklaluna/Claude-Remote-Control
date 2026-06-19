@@ -45,21 +45,21 @@ struct CreateTaskRequest: Codable {
 }
 
 struct CreateTaskResponse: Codable {
-    let task: Task
+    let task: AppTask
 }
 
 struct GetTaskResponse: Codable {
-    let task: Task
+    let task: AppTask
     let logs: [TaskLog]
     let result: TaskResult?
 }
 
 struct TaskListResponse: Codable {
-    let tasks: [Task]
+    let tasks: [AppTask]
 }
 
 struct CancelTaskResponse: Codable {
-    let task: Task
+    let task: AppTask
 }
 
 // MARK: - 通用错误
