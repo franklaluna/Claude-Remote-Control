@@ -15,6 +15,7 @@
 		49DA54145BA34EE7C2437A47 /* TaskListViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA49CC35089E0D2022D56557 /* TaskListViewModel.swift */; };
 		4DA939EAF1533FB96C7D9636 /* Task.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD8820672B2416D768242D74 /* Task.swift */; };
 		5BC74C698ACBFA0B662DD318 /* TaskDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E330EA32515D7CC19CBB8D2 /* TaskDetailViewModel.swift */; };
+		5EFB8C4BDBF950A1E65AE5A3 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72F3211A637E0E8CDE12AC1A /* LoginView.swift */; };
 		60D286430A2C75260B328CA8 /* DeviceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE16EDE5CB240CC92D21C95C /* DeviceListView.swift */; };
 		677742DAE7E83CA850611745 /* DeviceListViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56ECB9EE5A68722588E1DE79 /* DeviceListViewModel.swift */; };
 		6C8B85BCA50C3322BB0E79AE /* TaskResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA00B41799B3C5AB3CDDBF41 /* TaskResult.swift */; };
@@ -34,6 +35,7 @@
 		6635EBC1DBF0D3753FAB722A /* TaskLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskLog.swift; sourceTree = "<group>"; };
 		6BE57F84B8ED3DDECC4A1A53 /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
 		71F4F1E59A9CC9F3DDC1B145 /* CreateTaskView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateTaskView.swift; sourceTree = "<group>"; };
+		72F3211A637E0E8CDE12AC1A /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		9E330EA32515D7CC19CBB8D2 /* TaskDetailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskDetailViewModel.swift; sourceTree = "<group>"; };
 		9E979EA3CC911A4C1D41A90A /* APIResponses.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIResponses.swift; sourceTree = "<group>"; };
 		9EECD7DABC0D7BB09FDF72A7 /* ClaudeRemoteControlApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeRemoteControlApp.swift; sourceTree = "<group>"; };
@@ -104,6 +106,7 @@
 			children = (
 				71F4F1E59A9CC9F3DDC1B145 /* CreateTaskView.swift */,
 				EE16EDE5CB240CC92D21C95C /* DeviceListView.swift */,
+				72F3211A637E0E8CDE12AC1A /* LoginView.swift */,
 				B448CBB8A8F3AA442E5AADEB /* TaskDetailView.swift */,
 				3EC6ABB1FC9DB7268C3FC90D /* TaskListView.swift */,
 			);
@@ -190,6 +193,7 @@
 				9DF290E49CE04889A7FD16A3 /* Device.swift in Sources */,
 				60D286430A2C75260B328CA8 /* DeviceListView.swift in Sources */,
 				677742DAE7E83CA850611745 /* DeviceListViewModel.swift in Sources */,
+				5EFB8C4BDBF950A1E65AE5A3 /* LoginView.swift in Sources */,
 				4DA939EAF1533FB96C7D9636 /* Task.swift in Sources */,
 				B1D38B230923C41E6E085E94 /* TaskDetailView.swift in Sources */,
 				5BC74C698ACBFA0B662DD318 /* TaskDetailViewModel.swift in Sources */,

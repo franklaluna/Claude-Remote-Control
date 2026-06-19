@@ -1,11 +1,20 @@
 import SwiftUI
 
-// 主内容视图 — Tab 导航
 struct ContentView: View {
     @State private var selectedTab = 0
     @StateObject private var wsService = WebSocketService.shared
+    @AppStorage("auth_token") private var token = ""
 
     var body: some View {
+        if token.isEmpty {
+            LoginView()
+        } else {
+            mainView
+                .onAppear { connectWebSocket() }
+        }
+    }
+
+    private var mainView: some View {
         TabView(selection: $selectedTab) {
             DeviceListView()
                 .tabItem {
@@ -28,18 +37,15 @@ struct ContentView: View {
                 }
                 .tag(2)
         }
-        .onAppear { connectWebSocket() }
     }
 
     private func connectWebSocket() {
-        let serverHost = UserDefaults.standard.string(forKey: "server_host") ?? "localhost:3000"
-        let token = UserDefaults.standard.string(forKey: "auth_token") ?? ""
-        let baseURL = URL(string: "http://\(serverHost)/api") ?? URL(string: "http://localhost:3000/api")!
+        let serverHost = UserDefaults.standard.string(forKey: "server_host") ?? "192.168.11.210:3000"
+        let baseURL = URL(string: "http://\(serverHost)/api") ?? URL(string: "http://192.168.11.210:3000/api")!
 
         APIService.shared.configure(baseURL: baseURL, token: token)
 
-        // 原生 WebSocket: ws:// 方案，path=/ws
-        let host = serverHost.components(separatedBy: ":").first ?? "localhost"
+        let host = serverHost.components(separatedBy: ":").first ?? "192.168.11.210"
         let port = Int(serverHost.components(separatedBy: ":").last ?? "3000") ?? 3000
         var wsComponents = URLComponents()
         wsComponents.scheme = "ws"
@@ -48,7 +54,7 @@ struct ContentView: View {
         wsComponents.path = "/ws"
 
         if let wsURL = wsComponents.url {
-            WebSocketService.shared.connect(url: wsURL, token: token.isEmpty ? nil : token)
+            WebSocketService.shared.connect(url: wsURL, token: token)
         }
     }
 }

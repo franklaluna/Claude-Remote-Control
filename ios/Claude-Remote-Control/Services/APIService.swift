@@ -83,6 +83,11 @@ final class APIService {
         return try await request(method: "POST", path: "auth/login", body: body, authenticated: false)
     }
 
+        func registerUser(email: String, password: String) async throws -> LoginResponse {
+        let body = LoginRequest(email: email, password: password)
+        return try await request(method: "POST", path: "auth/register", body: body, authenticated: false)
+    }
+
     // MARK: - 设备
 
     func listDevices() async throws -> DeviceListResponse {
