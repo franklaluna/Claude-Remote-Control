@@ -66,7 +66,13 @@ final class TaskDetailViewModel: ObservableObject {
         ws.resultPublisher
             .filter { [weak self] in $0.task_id == self?.taskID }
             .sink { [weak self] payload in
-                self?.result = payload.result
+                self?.result = TaskResult(
+                    status: payload.status,
+                    summary: payload.summary ?? "",
+                    files_changed: 0,
+                    files: [],
+                    error: payload.error
+                )
             }
             .store(in: &cancellables)
     }
