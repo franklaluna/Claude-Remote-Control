@@ -22,7 +22,6 @@ import (
 	"github.com/claude-remote-control/agent/internal/ws"
 )
 
-// 任务执行超时时间（30 分钟）
 const taskTimeout = 30 * time.Minute
 
 func main() {
@@ -32,7 +31,6 @@ func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	log.Println("===== Claude Remote Control Agent v1.0.0 =====")
 
-	// 加载配置
 	cfg, err := config.Load(*configPath)
 	if err != nil {
 		log.Fatalf("加载配置失败: %v", err)
@@ -47,28 +45,23 @@ func main() {
 	}
 	log.Printf("claude CLI 检测成功: %s", claude.Path())
 
-	// 创建 WebSocket 客户端
 	wsClient := ws.NewClient(cfg.ServerURL, cfg.Token, cfg.DeviceID)
 
-	// 运行中任务的取消注册表: taskID → cancel func
 	var (
-		cancelMu   sync.Mutex
-		cancelMap  = make(map[string]context.CancelFunc)
+		cancelMu  sync.Mutex
+		cancelMap = make(map[string]context.CancelFunc)
 	)
 
-	// 设置任务接收回调
 	taskReceiver := task.NewReceiver(func(params task.TaskParams) {
 		handleTask(wsClient, claude, params, &cancelMu, cancelMap)
 	})
 	wsClient.OnTaskReceived = taskReceiver.Handle
-
-	// 设置取消任务回调 — 服务端推送取消时传播到正在执行的任务
 	wsClient.OnCancelReceived = func(taskID string) {
 		cancelMu.Lock()
 		cancel, ok := cancelMap[taskID]
 		if ok {
 			delete(cancelMap, taskID)
-			cancel() // 触发 ctx 取消 → executor 中 CommandContext 自动 kill 子进程
+			cancel()
 			log.Printf("[main] 任务 %s 已被服务端取消", taskID)
 		}
 		cancelMu.Unlock()
@@ -81,7 +74,6 @@ func main() {
 	go func() {
 		<-sigCh
 		log.Println("收到退出信号，正在关闭...")
-		// 取消所有运行中的任务
 		cancelMu.Lock()
 		for taskID, cancel := range cancelMap {
 			log.Printf("[main] 取消运行中任务: %s", taskID)
@@ -92,7 +84,6 @@ func main() {
 		os.Exit(0)
 	}()
 
-	// 持续运行
 	wsClient.Run()
 }
 
@@ -106,40 +97,36 @@ func handleTask(wsClient *ws.Client, claude *executor.Claude, params task.TaskPa
 	safe, reason := security.Check(params.Prompt)
 	if !safe {
 		log.Printf("[security] 拒绝执行: %s", reason)
-		ack := task.NewAckMessage(params.TaskID, "rejected", reason)
+		ack := task.NewRejectedMessage(params.TaskID, reason)
 		wsClient.Send(ack)
 		return
 	}
 
 	// 发送 ACK 确认
-	ack := task.NewAckMessage(params.TaskID, "accepted", "")
+	ack := task.NewAcceptedMessage(params.TaskID)
 	wsClient.Send(ack)
 
-	// 更新状态为 running
-	statusMsg := ws.Message{
-		Type: "task:status",
+	// 发送 task_started
+	wsClient.Send(ws.Message{
+		Type: "task_started",
 		Payload: map[string]interface{}{
 			"task_id": params.TaskID,
-			"status":  "running",
 		},
-	}
-	wsClient.Send(statusMsg)
+	})
 
 	// 初始化流式上传器和结果收集器
 	logStreamer := streamer.New(wsClient, params.TaskID)
 	resultCollector := result.NewCollector(wsClient, params.TaskID)
 
-	// 包装 OnLine 回调，同时流式上传和收集日志
 	onLine := func(line string, isStderr bool) {
 		logStreamer.OnLine(line, isStderr)
 		resultCollector.CollectLog(line)
 	}
 
-	// 创建带超时的上下文（30 分钟），支持外部取消
+	// 创建带超时的上下文，支持外部取消
 	ctx, cancel := context.WithTimeout(context.Background(), taskTimeout)
 	defer cancel()
 
-	// 注册取消函数，允许服务端推送取消
 	cancelMu.Lock()
 	cancelMap[params.TaskID] = cancel
 	cancelMu.Unlock()
@@ -159,37 +146,24 @@ func handleTask(wsClient *ws.Client, claude *executor.Claude, params task.TaskPa
 
 	execResult := claude.Execute(ctx, execTask, onLine)
 
-	// 根据结果确定最终状态
-	finalStatus := "completed"
+	// 区分超时取消和失败
 	if execResult.ExitCode != 0 || execResult.Error != nil {
-		// 区分超时取消和失败
 		if ctx.Err() != nil {
 			if ctx.Err() == context.DeadlineExceeded {
-				finalStatus = "failed"
 				execResult.Error = fmt.Errorf("任务执行超时 (%v)", taskTimeout)
 				execResult.ExitCode = -1
 			} else if ctx.Err() == context.Canceled {
-				finalStatus = "cancelled"
+				// 被取消 — 不发送失败结果，只记录
+				log.Printf("任务 %s 已取消", params.TaskID)
+				return
 			}
-		} else {
-			finalStatus = "failed"
 		}
 	}
 
-	// 发送最终结果
+	// 发送最终结果（task_completed 或 task_failed）
 	if err := resultCollector.Send(execResult); err != nil {
 		log.Printf("发送最终结果失败: %v", err)
 	}
 
-	// 发送最终状态
-	finalMsg := ws.Message{
-		Type: "task:status",
-		Payload: map[string]interface{}{
-			"task_id": params.TaskID,
-			"status":  finalStatus,
-		},
-	}
-	wsClient.Send(finalMsg)
-
-	fmt.Printf("任务 %s 处理完成, 状态=%s\n", params.TaskID, finalStatus)
+	fmt.Printf("任务 %s 处理完成\n", params.TaskID)
 }

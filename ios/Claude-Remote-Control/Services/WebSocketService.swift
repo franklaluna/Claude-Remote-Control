@@ -1,180 +1,128 @@
 import Foundation
 import Combine
 
-// WebSocket 消息类型（与服务端对齐）
-enum WsMessageType: String, Codable {
-    case taskLog = "task:log"
-    case taskStatus = "task:status"
-    case taskResult = "task:result"
-    case deviceStatus = "device:status"
-    case deviceOnline = "device:online"
-    case deviceOffline = "device:offline"
-    case heartbeat
-    case auth
-}
+// MARK: - 消息负载类型（与服务端 WsMessage 对齐）
 
-// WebSocket 消息
-struct WsMessage: Codable {
-    let type: WsMessageType
-    let payload: AnyCodable
-    let timestamp: String
-}
-
-// 任务日志负载
 struct WsTaskLogPayload: Codable {
     let task_id: String
     let message: String
 }
 
-// 任务状态负载
 struct WsTaskStatusPayload: Codable {
     let task_id: String
-    let status: TaskStatus
+    let status: String
 }
 
-// 任务结果负载
 struct WsTaskResultPayload: Codable {
     let task_id: String
-    let result: TaskResult
+    let summary: String?
+    let error: String?
+    let status: String
 }
 
-// 设备状态负载
 struct WsDeviceStatusPayload: Codable {
     let device_id: String
-    let status: DeviceStatus
+    let status: String
+    let name: String?
+    let platform: String?
+    let last_seen: String?
 }
 
-// 用于解码任意 JSON 值
-struct AnyCodable: Codable {
-    let value: Any
-
-    init(_ value: Any) {
-        self.value = value
-    }
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.singleValueContainer()
-        if let str = try? container.decode(String.self) {
-            value = str
-        } else if let int = try? container.decode(Int.self) {
-            value = int
-        } else if let double = try? container.decode(Double.self) {
-            value = double
-        } else if let bool = try? container.decode(Bool.self) {
-            value = bool
-        } else if let obj = try? container.decode([String: AnyCodable].self) {
-            value = obj.mapValues { $0.value }
-        } else if let arr = try? container.decode([AnyCodable].self) {
-            value = arr.map { $0.value }
-        } else {
-            value = NSNull()
-        }
-    }
-
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.singleValueContainer()
-        switch value {
-        case let str as String: try container.encode(str)
-        case let int as Int: try container.encode(int)
-        case let double as Double: try container.encode(double)
-        case let bool as Bool: try container.encode(bool)
-        case let dict as [String: Any]:
-            try container.encode(dict.mapValues { AnyCodable($0) })
-        case let arr as [Any]:
-            try container.encode(arr.map { AnyCodable($0) })
-        default: try container.encodeNil()
-        }
-    }
+// 服务端消息信封
+struct WsMessage: Codable {
+    let type: String
+    // payload 为 Any，用 JSONSerialization 手动解析
 }
 
-extension AnyCodable {
-    var unwrapped: Any {
-        switch value {
-        case let dict as [String: AnyCodable]: return dict.mapValues { $0.unwrapped }
-        case let arr as [AnyCodable]: return arr.map { $0.unwrapped }
-        default: return value
-        }
-    }
-}
-
-// MARK: - WebSocket 服务
+// MARK: - WebSocket 服务（原生 URLSessionWebSocketTask）
 
 final class WebSocketService: NSObject, ObservableObject {
     static let shared = WebSocketService()
 
-    private var task: URLSessionWebSocketTask?
+    private var wsTask: URLSessionWebSocketTask?
     private var session: URLSession!
-    private var pingTimer: Timer?
+    private var shouldReconnect = false
+    private var wsURL: URL?
+    private var authToken: String?
 
     private let decoder = JSONDecoder()
-    private let encoder = JSONEncoder()
 
-    // Combine 发布者 — 日志消息流
+    @Published var isConnected = false
+
+    // Combine 发布者（ViewModel 订阅）
     let logPublisher = PassthroughSubject<WsTaskLogPayload, Never>()
     let statusPublisher = PassthroughSubject<WsTaskStatusPayload, Never>()
     let resultPublisher = PassthroughSubject<WsTaskResultPayload, Never>()
     let deviceStatusPublisher = PassthroughSubject<WsDeviceStatusPayload, Never>()
-
-    @Published var isConnected = false
 
     private override init() {
         super.init()
         session = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
     }
 
-    func connect(url: URL, token: String? = nil) {
+    func connect(url: URL, token: String?) {
         disconnect()
+        self.wsURL = url
+        self.authToken = token
+        shouldReconnect = true
 
         var request = URLRequest(url: url)
-        if let token {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
+        request.timeoutInterval = 10
 
-        task = session.webSocketTask(with: request)
-        task?.resume()
+        wsTask = session.webSocketTask(with: request)
+        wsTask?.resume()
         isConnected = true
 
-        startPing()
+        // 连接后立即发送认证消息
+        if let token {
+            sendAuth(token: token)
+        }
+
         receive()
     }
 
     func disconnect() {
-        pingTimer?.invalidate()
-        pingTimer = nil
-        task?.cancel(with: .normalClosure, reason: nil)
-        task = nil
+        shouldReconnect = false
+        wsTask?.cancel(with: .normalClosure, reason: nil)
+        wsTask = nil
         isConnected = false
     }
 
-    // MARK: - 发送消息
+    // MARK: - 发送
 
-    func send(type: WsMessageType, payload: Any) {
-        guard let task else { return }
-        let msg = WsMessage(
-            type: type,
-            payload: AnyCodable(payload),
-            timestamp: ISO8601DateFormatter().string(from: Date())
-        )
-        guard let data = try? encoder.encode(msg),
+    func send(type: String, payload: [String: Any]) {
+        guard let task = wsTask else { return }
+        let msg: [String: Any] = [
+            "type": type,
+            "payload": payload,
+            "timestamp": ISO8601DateFormatter().string(from: Date()),
+        ]
+        guard let data = try? JSONSerialization.data(withJSONObject: msg),
               let text = String(data: data, encoding: .utf8) else { return }
-        task.send(.string(text)) { [weak self] error in
-            if let error {
-                print("[WS] 发送失败: \(error.localizedDescription)")
-            }
+
+        task.send(.string(text)) { error in
+            if let error { print("[WS] send error: \(error.localizedDescription)") }
         }
     }
 
-    // MARK: - 接收消息
+    // MARK: - 认证
+
+    private func sendAuth(token: String) {
+        send(type: "auth", payload: ["token": token])
+    }
+
+    // MARK: - 接收
 
     private func receive() {
-        task?.receive { [weak self] result in
+        wsTask?.receive { [weak self] result in
             switch result {
             case .success(let message):
                 self?.handle(message)
                 self?.receive()
             case .failure(let error):
-                print("[WS] 接收错误: \(error.localizedDescription)")
-                self?.isConnected = false
+                print("[WS] receive error: \(error.localizedDescription)")
+                DispatchQueue.main.async { self?.isConnected = false }
+                self?.tryReconnect()
             }
         }
     }
@@ -183,59 +131,95 @@ final class WebSocketService: NSObject, ObservableObject {
         switch message {
         case .string(let text):
             guard let data = text.data(using: .utf8),
-                  let wsMsg = try? decoder.decode(WsMessage.self, from: data) else { return }
+                  let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let type = dict["type"] as? String else { return }
             DispatchQueue.main.async { [weak self] in
-                self?.dispatch(wsMsg)
+                self?.dispatch(type: type, dict: dict)
             }
         case .data(let data):
-            guard let wsMsg = try? decoder.decode(WsMessage.self, from: data) else { return }
+            guard let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let type = dict["type"] as? String else { return }
             DispatchQueue.main.async { [weak self] in
-                self?.dispatch(wsMsg)
+                self?.dispatch(type: type, dict: dict)
             }
         @unknown default: break
         }
     }
 
-    private func dispatch(_ msg: WsMessage) {
-        switch msg.type {
-        case .taskLog:
-            if let payload = decodePayload(WsTaskLogPayload.self, from: msg.payload) {
+    private func dispatch(type: String, dict: [String: Any]) {
+        switch type {
+        case "auth_ok":
+            isConnected = true
+            print("[WS] 认证成功")
+
+        case "auth_error":
+            isConnected = false
+            print("[WS] 认证失败: \(dict["payload"] ?? "")")
+
+        case "task_log":
+            if let payload = extractPayload(dict) as WsTaskLogPayload? {
                 logPublisher.send(payload)
             }
-        case .taskStatus:
-            if let payload = decodePayload(WsTaskStatusPayload.self, from: msg.payload) {
-                statusPublisher.send(payload)
+
+        case "task_started":
+            if let payload = extractPayload(dict) as? [String: Any],
+               let taskId = payload["task_id"] as? String {
+                statusPublisher.send(WsTaskStatusPayload(task_id: taskId, status: "running"))
             }
-        case .taskResult:
-            if let payload = decodePayload(WsTaskResultPayload.self, from: msg.payload) {
-                resultPublisher.send(payload)
+
+        case "task_completed":
+            if let payload = extractPayload(dict) as? [String: Any],
+               let taskId = payload["task_id"] as? String {
+                resultPublisher.send(WsTaskResultPayload(
+                    task_id: taskId,
+                    summary: payload["summary"] as? String,
+                    error: nil,
+                    status: "completed"
+                ))
+                statusPublisher.send(WsTaskStatusPayload(task_id: taskId, status: "completed"))
             }
-        case .deviceStatus, .deviceOnline, .deviceOffline:
-            if let payload = decodePayload(WsDeviceStatusPayload.self, from: msg.payload) {
+
+        case "task_failed":
+            if let payload = extractPayload(dict) as? [String: Any],
+               let taskId = payload["task_id"] as? String {
+                resultPublisher.send(WsTaskResultPayload(
+                    task_id: taskId,
+                    summary: nil,
+                    error: payload["error"] as? String,
+                    status: "failed"
+                ))
+                statusPublisher.send(WsTaskStatusPayload(task_id: taskId, status: "failed"))
+            }
+
+        case "device:status", "device:online", "device:offline":
+            if let payload = extractPayload(dict) as WsDeviceStatusPayload? {
                 deviceStatusPublisher.send(payload)
             }
-        case .heartbeat, .auth: break
+
+        default: break
         }
     }
 
-    private func decodePayload<T: Decodable>(_ type: T.Type, from anyCodable: AnyCodable) -> T? {
-        let raw = anyCodable.unwrapped
-        guard JSONSerialization.isValidJSONObject(raw),
-              let data = try? JSONSerialization.data(withJSONObject: raw),
-              let obj = try? decoder.decode(T.self, from: data) else { return nil }
-        return obj
+    // 从消息信封中提取 payload 并解码为目标类型
+    private func extractPayload<T: Decodable>(_ dict: [String: Any]) -> T? {
+        guard let payload = dict["payload"] else { return nil }
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: payload)
+            return try decoder.decode(T.self, from: jsonData)
+        } catch {
+            print("[WS] decode error: \(error)")
+            return nil
+        }
     }
 
-    // MARK: - 心跳
+    // MARK: - 重连
 
-    private func startPing() {
-        pingTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
-            self?.task?.sendPing { error in
-                if let error {
-                    print("[WS] Ping 失败: \(error.localizedDescription)")
-                    DispatchQueue.main.async { self?.isConnected = false }
-                }
-            }
+    private func tryReconnect() {
+        guard shouldReconnect, let url = wsURL else { return }
+        DispatchQueue.global().asyncAfter(deadline: .now() + 3) { [weak self] in
+            guard let self, self.shouldReconnect else { return }
+            print("[WS] 尝试重连...")
+            self.connect(url: url, token: self.authToken)
         }
     }
 }
@@ -243,18 +227,15 @@ final class WebSocketService: NSObject, ObservableObject {
 // MARK: - URLSessionWebSocketDelegate
 
 extension WebSocketService: URLSessionWebSocketDelegate {
-    func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didCloseWith closeCode: URLSessionWebSocketTask.CloseCode, reason: Data?) {
-        DispatchQueue.main.async { [weak self] in
-            self?.isConnected = false
-        }
+    func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask,
+                    didCloseWith closeCode: URLSessionWebSocketTask.CloseCode, reason: Data?) {
+        DispatchQueue.main.async { [weak self] in self?.isConnected = false }
+        tryReconnect()
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
-        DispatchQueue.main.async { [weak self] in
-            self?.isConnected = false
-            if let error {
-                print("[WS] 连接断开: \(error.localizedDescription)")
-            }
-        }
+        DispatchQueue.main.async { [weak self] in self?.isConnected = false }
+        if let error { print("[WS] disconnected: \(error.localizedDescription)") }
+        tryReconnect()
     }
 }

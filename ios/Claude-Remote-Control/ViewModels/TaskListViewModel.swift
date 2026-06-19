@@ -38,7 +38,7 @@ final class TaskListViewModel: ObservableObject {
         ws.statusPublisher
             .sink { [weak self] payload in
                 guard let self, let index = self.tasks.firstIndex(where: { $0.id == payload.task_id }) else { return }
-                self.tasks[index].status = payload.status
+                if let status = TaskStatus(rawValue: payload.status) { self.tasks[index].status = status }
             }
             .store(in: &cancellables)
     }

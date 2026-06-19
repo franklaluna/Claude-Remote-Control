@@ -40,7 +40,7 @@ func (s *LogStreamer) OnLine(line string, isStderr bool) {
 	s.mu.Unlock()
 
 	msg := ws.Message{
-		Type: "task:log",
+		Type: "task_log",
 		Payload: LogPayload{
 			TaskID:  s.taskID,
 			Seq:     seq,

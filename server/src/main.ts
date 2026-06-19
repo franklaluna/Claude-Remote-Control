@@ -1,11 +1,14 @@
-// NestJS Relay Server — 入口
-
+// NestJS Relay Server — 入口（原生 WebSocket）
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { WsAdapter } from '@nestjs/platform-ws';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // 使用原生 WebSocket 适配器（兼容 iOS 原生 WebSocket 客户端）
+  app.useWebSocketAdapter(new WsAdapter(app));
 
   // 全局 API 前缀
   app.setGlobalPrefix('api');

@@ -1,0 +1,380 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		12FDF06098D0BE58E3EF1402 /* CreateTaskViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34DA30F2E3F12B39AE02633D /* CreateTaskViewModel.swift */; };
+		18EFE7C44B99B4BC7A5191A1 /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BE57F84B8ED3DDECC4A1A53 /* APIService.swift */; };
+		1D6A2A2D3C2435E6653E90A7 /* TaskLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6635EBC1DBF0D3753FAB722A /* TaskLog.swift */; };
+		3716A6BFA5787064EA642044 /* CreateTaskView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71F4F1E59A9CC9F3DDC1B145 /* CreateTaskView.swift */; };
+		3CE3E05D8D7D82BECF1E5DB6 /* WebSocketService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4655B6CBC452F873ED17C96 /* WebSocketService.swift */; };
+		49DA54145BA34EE7C2437A47 /* TaskListViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA49CC35089E0D2022D56557 /* TaskListViewModel.swift */; };
+		4DA939EAF1533FB96C7D9636 /* Task.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD8820672B2416D768242D74 /* Task.swift */; };
+		5BC74C698ACBFA0B662DD318 /* TaskDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E330EA32515D7CC19CBB8D2 /* TaskDetailViewModel.swift */; };
+		60D286430A2C75260B328CA8 /* DeviceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE16EDE5CB240CC92D21C95C /* DeviceListView.swift */; };
+		677742DAE7E83CA850611745 /* DeviceListViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56ECB9EE5A68722588E1DE79 /* DeviceListViewModel.swift */; };
+		6C8B85BCA50C3322BB0E79AE /* TaskResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA00B41799B3C5AB3CDDBF41 /* TaskResult.swift */; };
+		726A4D35644107279EA354F1 /* ClaudeRemoteControlApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EECD7DABC0D7BB09FDF72A7 /* ClaudeRemoteControlApp.swift */; };
+		8099AD7F1CB58FC63615829A /* TaskListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3EC6ABB1FC9DB7268C3FC90D /* TaskListView.swift */; };
+		9DF290E49CE04889A7FD16A3 /* Device.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC48361FE3526CF555D0B681 /* Device.swift */; };
+		B0B1C1F3CF5BD203B944BC75 /* APIResponses.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E979EA3CC911A4C1D41A90A /* APIResponses.swift */; };
+		B1D38B230923C41E6E085E94 /* TaskDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B448CBB8A8F3AA442E5AADEB /* TaskDetailView.swift */; };
+		D7E9BD66B74C314F7E48C574 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A50F712608123CD6EC6C304D /* ContentView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		255557A351A866341BA21DCF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		34DA30F2E3F12B39AE02633D /* CreateTaskViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateTaskViewModel.swift; sourceTree = "<group>"; };
+		3EC6ABB1FC9DB7268C3FC90D /* TaskListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskListView.swift; sourceTree = "<group>"; };
+		56ECB9EE5A68722588E1DE79 /* DeviceListViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceListViewModel.swift; sourceTree = "<group>"; };
+		6635EBC1DBF0D3753FAB722A /* TaskLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskLog.swift; sourceTree = "<group>"; };
+		6BE57F84B8ED3DDECC4A1A53 /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
+		71F4F1E59A9CC9F3DDC1B145 /* CreateTaskView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateTaskView.swift; sourceTree = "<group>"; };
+		9E330EA32515D7CC19CBB8D2 /* TaskDetailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskDetailViewModel.swift; sourceTree = "<group>"; };
+		9E979EA3CC911A4C1D41A90A /* APIResponses.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIResponses.swift; sourceTree = "<group>"; };
+		9EECD7DABC0D7BB09FDF72A7 /* ClaudeRemoteControlApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeRemoteControlApp.swift; sourceTree = "<group>"; };
+		A50F712608123CD6EC6C304D /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		B448CBB8A8F3AA442E5AADEB /* TaskDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskDetailView.swift; sourceTree = "<group>"; };
+		BA49CC35089E0D2022D56557 /* TaskListViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskListViewModel.swift; sourceTree = "<group>"; };
+		CA00B41799B3C5AB3CDDBF41 /* TaskResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskResult.swift; sourceTree = "<group>"; };
+		CC48361FE3526CF555D0B681 /* Device.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Device.swift; sourceTree = "<group>"; };
+		E4655B6CBC452F873ED17C96 /* WebSocketService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketService.swift; sourceTree = "<group>"; };
+		EE16EDE5CB240CC92D21C95C /* DeviceListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceListView.swift; sourceTree = "<group>"; };
+		EF4182BDD1174A756F977192 /* ClaudeRemoteControl.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = ClaudeRemoteControl.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		FD8820672B2416D768242D74 /* Task.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Task.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		2225C25686EE92DA896E045F /* Claude-Remote-Control */ = {
+			isa = PBXGroup;
+			children = (
+				9EECD7DABC0D7BB09FDF72A7 /* ClaudeRemoteControlApp.swift */,
+				A50F712608123CD6EC6C304D /* ContentView.swift */,
+				255557A351A866341BA21DCF /* Info.plist */,
+				F3DBE2DD09B0909E4B821E94 /* Models */,
+				55ED7D9E527A104267A10318 /* Services */,
+				533F43A2A584A128142D2E78 /* ViewModels */,
+				E72D50D4F80514FF0E1B172D /* Views */,
+			);
+			path = "Claude-Remote-Control";
+			sourceTree = "<group>";
+		};
+		533F43A2A584A128142D2E78 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				34DA30F2E3F12B39AE02633D /* CreateTaskViewModel.swift */,
+				56ECB9EE5A68722588E1DE79 /* DeviceListViewModel.swift */,
+				9E330EA32515D7CC19CBB8D2 /* TaskDetailViewModel.swift */,
+				BA49CC35089E0D2022D56557 /* TaskListViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		55ED7D9E527A104267A10318 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				6BE57F84B8ED3DDECC4A1A53 /* APIService.swift */,
+				E4655B6CBC452F873ED17C96 /* WebSocketService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		B934E090C73A9E279AEC37A0 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				EF4182BDD1174A756F977192 /* ClaudeRemoteControl.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		CA46319B7CE681B51858B750 = {
+			isa = PBXGroup;
+			children = (
+				2225C25686EE92DA896E045F /* Claude-Remote-Control */,
+				B934E090C73A9E279AEC37A0 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		E72D50D4F80514FF0E1B172D /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				71F4F1E59A9CC9F3DDC1B145 /* CreateTaskView.swift */,
+				EE16EDE5CB240CC92D21C95C /* DeviceListView.swift */,
+				B448CBB8A8F3AA442E5AADEB /* TaskDetailView.swift */,
+				3EC6ABB1FC9DB7268C3FC90D /* TaskListView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		F3DBE2DD09B0909E4B821E94 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				9E979EA3CC911A4C1D41A90A /* APIResponses.swift */,
+				CC48361FE3526CF555D0B681 /* Device.swift */,
+				FD8820672B2416D768242D74 /* Task.swift */,
+				6635EBC1DBF0D3753FAB722A /* TaskLog.swift */,
+				CA00B41799B3C5AB3CDDBF41 /* TaskResult.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A51F546F05B299C30B7BF3B0 /* ClaudeRemoteControl */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C6567280A5681285ACFC8E11 /* Build configuration list for PBXNativeTarget "ClaudeRemoteControl" */;
+			buildPhases = (
+				18CA835D8DB084F1D89DBFF5 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ClaudeRemoteControl;
+			packageProductDependencies = (
+			);
+			productName = ClaudeRemoteControl;
+			productReference = EF4182BDD1174A756F977192 /* ClaudeRemoteControl.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		122C589388CB874C96A10178 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = 281C73BCFEDFA36D51BA3CAF /* Build configuration list for PBXProject "ClaudeRemoteControl" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = CA46319B7CE681B51858B750;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = B934E090C73A9E279AEC37A0 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A51F546F05B299C30B7BF3B0 /* ClaudeRemoteControl */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		18CA835D8DB084F1D89DBFF5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B0B1C1F3CF5BD203B944BC75 /* APIResponses.swift in Sources */,
+				18EFE7C44B99B4BC7A5191A1 /* APIService.swift in Sources */,
+				726A4D35644107279EA354F1 /* ClaudeRemoteControlApp.swift in Sources */,
+				D7E9BD66B74C314F7E48C574 /* ContentView.swift in Sources */,
+				3716A6BFA5787064EA642044 /* CreateTaskView.swift in Sources */,
+				12FDF06098D0BE58E3EF1402 /* CreateTaskViewModel.swift in Sources */,
+				9DF290E49CE04889A7FD16A3 /* Device.swift in Sources */,
+				60D286430A2C75260B328CA8 /* DeviceListView.swift in Sources */,
+				677742DAE7E83CA850611745 /* DeviceListViewModel.swift in Sources */,
+				4DA939EAF1533FB96C7D9636 /* Task.swift in Sources */,
+				B1D38B230923C41E6E085E94 /* TaskDetailView.swift in Sources */,
+				5BC74C698ACBFA0B662DD318 /* TaskDetailViewModel.swift in Sources */,
+				8099AD7F1CB58FC63615829A /* TaskListView.swift in Sources */,
+				49DA54145BA34EE7C2437A47 /* TaskListViewModel.swift in Sources */,
+				1D6A2A2D3C2435E6653E90A7 /* TaskLog.swift in Sources */,
+				6C8B85BCA50C3322BB0E79AE /* TaskResult.swift in Sources */,
+				3CE3E05D8D7D82BECF1E5DB6 /* WebSocketService.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		124C16A7F245F840E0EC9DCB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		3F6A1D97BDA727AF69000E45 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = "Claude-Remote-Control/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.claude.remote.control;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		637286D7F861ADDDE54FB3DA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		90E6643DDECE9065152DFA64 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = "Claude-Remote-Control/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.claude.remote.control;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		281C73BCFEDFA36D51BA3CAF /* Build configuration list for PBXProject "ClaudeRemoteControl" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				124C16A7F245F840E0EC9DCB /* Debug */,
+				637286D7F861ADDDE54FB3DA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C6567280A5681285ACFC8E11 /* Build configuration list for PBXNativeTarget "ClaudeRemoteControl" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				90E6643DDECE9065152DFA64 /* Debug */,
+				3F6A1D97BDA727AF69000E45 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 122C589388CB874C96A10178 /* Project object */;
+}

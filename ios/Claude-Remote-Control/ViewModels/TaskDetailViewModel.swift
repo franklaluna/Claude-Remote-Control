@@ -58,7 +58,7 @@ final class TaskDetailViewModel: ObservableObject {
         ws.statusPublisher
             .filter { [weak self] in $0.task_id == self?.taskID }
             .sink { [weak self] payload in
-                self?.task?.status = payload.status
+                if let status = TaskStatus(rawValue: payload.status) { self?.task?.status = status }
             }
             .store(in: &cancellables)
 

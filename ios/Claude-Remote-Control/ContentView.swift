@@ -28,25 +28,23 @@ struct ContentView: View {
                 }
                 .tag(2)
         }
-        .onAppear {
-            // 连接 WebSocket（需先从 UserDefaults 读取 token 和 URL）
-            connectWebSocket()
-        }
+        .onAppear { connectWebSocket() }
     }
 
     private func connectWebSocket() {
-        // 从 UserDefaults 读取配置
         let serverHost = UserDefaults.standard.string(forKey: "server_host") ?? "localhost:3000"
         let token = UserDefaults.standard.string(forKey: "auth_token") ?? ""
         let baseURL = URL(string: "http://\(serverHost)/api") ?? URL(string: "http://localhost:3000/api")!
 
         APIService.shared.configure(baseURL: baseURL, token: token)
 
-        // WebSocket URL
+        // 原生 WebSocket: ws:// 方案，path=/ws
+        let host = serverHost.components(separatedBy: ":").first ?? "localhost"
+        let port = Int(serverHost.components(separatedBy: ":").last ?? "3000") ?? 3000
         var wsComponents = URLComponents()
         wsComponents.scheme = "ws"
-        wsComponents.host = serverHost.components(separatedBy: ":").first ?? "localhost"
-        wsComponents.port = Int(serverHost.components(separatedBy: ":").last ?? "3000") ?? 3000
+        wsComponents.host = host
+        wsComponents.port = port
         wsComponents.path = "/ws"
 
         if let wsURL = wsComponents.url {

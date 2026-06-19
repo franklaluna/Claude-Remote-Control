@@ -29,7 +29,7 @@ func NewReceiver(onTask func(params TaskParams)) *Receiver {
 
 // Handle 处理 WebSocket 消息，解析任务下发
 func (r *Receiver) Handle(msg ws.Message) {
-	if msg.Type != "task:new" && msg.Type != "task:run" {
+	if msg.Type != "task_create" {
 		return
 	}
 
@@ -66,7 +66,6 @@ func parseTaskPayload(payload interface{}) (TaskParams, error) {
 		return params, fmt.Errorf("缺少 prompt")
 	}
 
-	// 设置默认值
 	if params.PermissionMode == "" {
 		params.PermissionMode = "default"
 	}
@@ -84,13 +83,24 @@ type AckPayload struct {
 	Reason string `json:"reason,omitempty"`
 }
 
-// NewAckMessage 创建任务确认消息
-func NewAckMessage(taskID, status, reason string) ws.Message {
+// NewAcceptedMessage 创建任务接收确认消息
+func NewAcceptedMessage(taskID string) ws.Message {
 	return ws.Message{
-		Type: "task:status",
+		Type: "task_accepted",
 		Payload: AckPayload{
 			TaskID: taskID,
-			Status: status,
+			Status: "accepted",
+		},
+	}
+}
+
+// NewRejectedMessage 创建任务拒绝消息
+func NewRejectedMessage(taskID, reason string) ws.Message {
+	return ws.Message{
+		Type: "task_accepted",
+		Payload: AckPayload{
+			TaskID: taskID,
+			Status: "rejected",
 			Reason: reason,
 		},
 	}

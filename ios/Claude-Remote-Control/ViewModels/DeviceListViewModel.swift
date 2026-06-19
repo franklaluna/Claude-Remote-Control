@@ -23,7 +23,7 @@ final class DeviceListViewModel: ObservableObject {
         ws.deviceStatusPublisher
             .sink { [weak self] payload in
                 guard let self, let index = self.devices.firstIndex(where: { $0.id == payload.device_id }) else { return }
-                self.devices[index].status = payload.status
+                if let status = DeviceStatus(rawValue: payload.status) { self.devices[index].status = status }
             }
             .store(in: &cancellables)
     }

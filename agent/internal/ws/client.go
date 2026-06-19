@@ -26,15 +26,6 @@ type AuthPayload struct {
 	DeviceID string `json:"device_id"`
 }
 
-// DeviceInfoPayload 设备注册信息
-type DeviceInfoPayload struct {
-	DeviceID string `json:"device_id"`
-	Name     string `json:"name"`
-	Platform string `json:"platform"`
-	Version  string `json:"version"`
-	Status   string `json:"status"`
-}
-
 // HeartbeatPayload 心跳负载
 type HeartbeatPayload struct {
 	DeviceID string `json:"device_id"`
@@ -47,11 +38,11 @@ type CancelPayload struct {
 
 // Client WebSocket 客户端
 type Client struct {
-	url       string
-	conn      *websocket.Conn
-	mu        sync.Mutex
-	deviceID  string
-	token     string
+	url      string
+	conn     *websocket.Conn
+	mu       sync.Mutex
+	deviceID string
+	token    string
 
 	// 重连控制
 	reconnect   bool
@@ -118,13 +109,25 @@ func (c *Client) authenticate() error {
 
 	log.Printf("[ws] 已发送认证消息, device_id=%s", c.deviceID)
 
-	// 读回第一个消息确认认证成功
-	_, _, err := c.conn.ReadMessage()
+	// 读回认证响应
+	_, resp, err := c.conn.ReadMessage()
 	if err != nil {
 		return fmt.Errorf("认证失败: %w", err)
 	}
-	// 清除读超时
 	c.conn.SetReadDeadline(time.Time{})
+
+	// 解析响应确认认证成功
+	var authResp struct {
+		Type    string `json:"type"`
+		Payload struct {
+			Message string `json:"message"`
+		} `json:"payload"`
+	}
+	if err := json.Unmarshal(resp, &authResp); err == nil {
+		if authResp.Type == "auth_error" {
+			return fmt.Errorf("认证被拒绝: %s", authResp.Payload.Message)
+		}
+	}
 
 	log.Printf("[ws] 认证成功")
 	return nil
@@ -144,7 +147,6 @@ func (c *Client) Run() {
 
 		c.readLoop()
 
-		// 连接断开，尝试重连
 		if c.reconnect {
 			c.reconnectWithBackoff()
 		} else {
@@ -206,12 +208,12 @@ func (c *Client) readLoop() {
 
 		log.Printf("[ws] 收到消息: type=%s", msg.Type)
 
-		if msg.Type == "heartbeat" {
-			continue // 心跳回复，忽略
+		if msg.Type == "heartbeat_ack" {
+			continue
 		}
 
 		// 处理取消消息
-		if msg.Type == "task:cancel" {
+		if msg.Type == "cancel_task" {
 			taskID := parseCancelPayload(msg.Payload)
 			if taskID != "" {
 				log.Printf("[ws] 收到取消任务: task_id=%s", taskID)
@@ -248,7 +250,6 @@ func (c *Client) reconnectWithBackoff() {
 			float64(time.Second)*math.Pow(2, float64(attempt)),
 			float64(c.maxBackoff),
 		))
-		// 添加 ±25% 的随机抖动
 		jitter := time.Duration(rand.Int63n(int64(backoff) / 2))
 		wait := backoff - backoff/4 + jitter
 
