@@ -28,9 +28,15 @@ struct TaskListView: View {
                             TaskCardView(task: task)
                         }
                         .swipeActions(edge: .trailing) {
-                            if task.status == .queued {
+                            if task.status == .queued || task.status == .running {
                                 Button("取消") {
                                     Task { await viewModel.cancelTask(task) }
+                                }
+                                .tint(.red)
+                            }
+                            if task.status == .completed || task.status == .failed || task.status == .cancelled {
+                                Button("删除", role: .destructive) {
+                                    Task { await viewModel.deleteTask(task) }
                                 }
                                 .tint(.red)
                             }

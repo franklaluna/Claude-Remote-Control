@@ -9,6 +9,7 @@ final class CreateTaskViewModel: ObservableObject {
     @Published var selectedDeviceID: String = ""
     @Published var workingDirectory = "/Users/gyfan/claude"
     @Published var permissionMode: PermissionMode = .default
+    @Published var timeoutMinutes: Int = 30
 
     // 可用设备列表（从 DeviceListViewModel 传入或单独加载）
     @Published var availableDevices: [Device] = []
@@ -60,7 +61,8 @@ final class CreateTaskViewModel: ObservableObject {
             prompt: prompt.trimmingCharacters(in: .whitespaces),
             device_id: selectedDeviceID,
             working_directory: workingDirectory,
-            permission_mode: permissionMode
+            permission_mode: permissionMode,
+            timeout_minutes: timeoutMinutes
         )
 
         do {
@@ -73,6 +75,7 @@ final class CreateTaskViewModel: ObservableObject {
                 self.prompt = ""
                 self.workingDirectory = "/Users/gyfan/claude"
                 self.permissionMode = .default
+                self.timeoutMinutes = 30
             }
         } catch {
             await MainActor.run {

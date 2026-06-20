@@ -1,5 +1,5 @@
-// 任务控制器 — GET/POST/POST:cancel /api/tasks
-import { Controller, Get, Post, Param, Body, Query, UseGuards } from '@nestjs/common';
+// 任务控制器 — GET/POST/POST:cancel/DELETE /api/tasks
+import { Controller, Get, Post, Delete, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { TasksService } from './tasks.service';
 import { JwtAuthGuard, JwtPayload } from '../../common/guards/jwt-auth.guard';
 import { User } from '../../common/decorators/user.decorator';
@@ -10,6 +10,7 @@ import {
   GetTaskResponse,
   TaskListResponse,
   CancelTaskResponse,
+  DeleteTaskResponse,
 } from '../../types';
 
 @Controller('tasks')
@@ -59,5 +60,13 @@ export class TasksController {
     @Body() body: ContinueTaskDto,
   ): Promise<CreateTaskResponse> {
     return this.tasksService.continueTask(user.id, id, body.prompt);
+  }
+
+  @Delete(':id')
+  async delete(
+    @User() user: JwtPayload,
+    @Param('id') id: string,
+  ): Promise<DeleteTaskResponse> {
+    return this.tasksService.delete(user.id, id);
   }
 }

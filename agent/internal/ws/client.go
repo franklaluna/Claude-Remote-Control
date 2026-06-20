@@ -50,8 +50,9 @@ type Client struct {
 	maxBackoff  time.Duration
 
 	// 消息接收回调
-	OnTaskReceived   func(msg Message) // 新任务
-	OnCancelReceived func(taskID string) // 取消任务
+	OnTaskReceived     func(msg Message) // 新任务
+	OnCancelReceived   func(taskID string) // 取消任务
+	OnContinueReceived func(taskID string, prompt string, workingDirectory string) // 追问继续
 }
 
 // NewClient 创建 WebSocket 客户端
@@ -238,10 +239,29 @@ func (c *Client) readLoop() {
 			continue
 		}
 
+		// 处理追问继续消息
+		if msg.Type == "task_continue" {
+			taskID, prompt, wd := parseContinuePayload(msg.Payload)
+			if taskID != "" {
+				log.Printf("[ws] 收到追问: task_id=%s", taskID)
+				if c.OnContinueReceived != nil {
+					c.OnContinueReceived(taskID, prompt, wd)
+				}
+			}
+			continue
+		}
+
 		if c.OnTaskReceived != nil {
 			c.OnTaskReceived(msg)
 		}
 	}
+}
+
+// ContinuePayload 追问继续任务负载
+type ContinuePayload struct {
+	TaskID           string `json:"task_id"`
+	Prompt           string `json:"prompt"`
+	WorkingDirectory string `json:"working_directory"`
 }
 
 // parseCancelPayload 从消息负载中提取 task_id
@@ -255,6 +275,19 @@ func parseCancelPayload(payload interface{}) string {
 		return ""
 	}
 	return cp.TaskID
+}
+
+// parseContinuePayload 解析 task_continue 消息负载
+func parseContinuePayload(payload interface{}) (taskID, prompt, workingDirectory string) {
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return "", "", ""
+	}
+	var cp ContinuePayload
+	if json.Unmarshal(data, &cp) != nil {
+		return "", "", ""
+	}
+	return cp.TaskID, cp.Prompt, cp.WorkingDirectory
 }
 
 // reconnectWithBackoff 指数退避重连

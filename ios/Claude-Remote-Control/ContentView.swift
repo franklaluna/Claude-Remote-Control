@@ -29,6 +29,15 @@ struct ContentView: View {
                         Text("创建")
                     }
                     .tag(2)
+
+                SettingsView(onLogout: {
+                    token = ""
+                })
+                    .tabItem {
+                        Image(systemName: "gearshape")
+                        Text("设置")
+                    }
+                    .tag(3)
             }
             .onAppear {
                 configureAPI()

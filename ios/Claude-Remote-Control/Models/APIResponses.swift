@@ -42,6 +42,7 @@ struct CreateTaskRequest: Codable {
     let device_id: String
     let working_directory: String
     let permission_mode: PermissionMode
+    let timeout_minutes: Int?
 }
 
 struct CreateTaskResponse: Codable {
@@ -62,6 +63,9 @@ struct CancelTaskResponse: Codable {
     let task: AppTask
 }
 
+struct DeleteTaskResponse: Codable {
+    let ok: Bool
+}
 // MARK: - 通用错误
 
 struct ApiError: Codable, Error {

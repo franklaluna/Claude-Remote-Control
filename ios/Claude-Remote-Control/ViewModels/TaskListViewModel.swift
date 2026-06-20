@@ -66,4 +66,15 @@ final class TaskListViewModel: ObservableObject {
             await MainActor.run { errorMessage = error.localizedDescription }
         }
     }
+
+    func deleteTask(_ task: AppTask) async {
+        do {
+            _ = try await api.deleteTask(id: task.id)
+            await MainActor.run {
+                tasks.removeAll { $0.id == task.id }
+            }
+        } catch {
+            await MainActor.run { errorMessage = error.localizedDescription }
+        }
+    }
 }

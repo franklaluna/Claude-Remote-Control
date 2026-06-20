@@ -15,11 +15,20 @@ type TaskParams struct {
 	Prompt           string `json:"prompt"`
 	WorkingDirectory string `json:"working_directory"`
 	PermissionMode   string `json:"permission_mode"`
+	TimeoutMinutes   int    `json:"timeout_minutes"`
+}
+
+// TaskContinueParams 继续任务参数（同一会话追加提问）
+type TaskContinueParams struct {
+	TaskID           string `json:"task_id"`
+	Prompt           string `json:"prompt"`
+	WorkingDirectory string `json:"working_directory"`
 }
 
 // Receiver 任务接收器
 type Receiver struct {
-	OnTask func(params TaskParams)
+	OnTask     func(params TaskParams)
+	OnContinue func(params TaskContinueParams)
 }
 
 // NewReceiver 创建任务接收器
@@ -68,6 +77,54 @@ func parseTaskPayload(payload interface{}) (TaskParams, error) {
 
 	if params.PermissionMode == "" {
 		params.PermissionMode = "default"
+	}
+	if params.WorkingDirectory == "" {
+		params.WorkingDirectory = "."
+	}
+	if params.TimeoutMinutes <= 0 {
+		params.TimeoutMinutes = 30
+	}
+
+	return params, nil
+}
+
+// HandleContinue 处理 task_continue 消息类型
+func (r *Receiver) HandleContinue(msg ws.Message) {
+	if msg.Type != "task_continue" {
+		return
+	}
+
+	params, err := parseContinuePayload(msg.Payload)
+	if err != nil {
+		fmt.Printf("[task] task_continue 解析失败: %v\n", err)
+		return
+	}
+
+	fmt.Printf("[task] 收到追问: task_id=%s prompt=%.80s\n", params.TaskID, params.Prompt)
+
+	if r.OnContinue != nil {
+		r.OnContinue(params)
+	}
+}
+
+// parseContinuePayload 解析 task_continue 消息负载
+func parseContinuePayload(payload interface{}) (TaskContinueParams, error) {
+	var params TaskContinueParams
+
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return params, fmt.Errorf("序列化 payload 失败: %w", err)
+	}
+
+	if err := json.Unmarshal(data, &params); err != nil {
+		return params, fmt.Errorf("反序列化继续任务参数失败: %w", err)
+	}
+
+	if params.TaskID == "" {
+		return params, fmt.Errorf("缺少 task_id")
+	}
+	if params.Prompt == "" {
+		return params, fmt.Errorf("缺少 prompt")
 	}
 	if params.WorkingDirectory == "" {
 		params.WorkingDirectory = "."

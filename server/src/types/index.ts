@@ -84,6 +84,7 @@ export type WsMessageType =
   | 'heartbeat_ack'
   // 任务生命周期（Server → Agent）
   | 'task_create'
+  | 'task_continue'
   // 任务生命周期（Agent → Server）
   | 'task_accepted'
   | 'task_started'
@@ -137,6 +138,15 @@ export interface WsHeartbeatPayload {
 export interface WsTaskCreatePayload {
   task_id: string;
   title: string;
+  prompt: string;
+  working_directory: string;
+  timeout_minutes?: number;
+}
+
+// --- Server → Agent: 追问当前任务 ---
+
+export interface WsTaskContinuePayload {
+  task_id: string;
   prompt: string;
   working_directory: string;
 }
@@ -261,6 +271,11 @@ export interface CancelTaskResponse {
 /** GET /api/tasks */
 export interface TaskListResponse {
   tasks: Task[];
+}
+
+/** DELETE /api/tasks/:id */
+export interface DeleteTaskResponse {
+  ok: boolean;
 }
 
 // --- API 通用响应 ---

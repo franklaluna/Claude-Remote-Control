@@ -1,5 +1,5 @@
 // 创建任务请求 DTO
-import { IsString, IsIn, MinLength, IsOptional } from 'class-validator';
+import { IsString, IsIn, IsInt, Min, Max, MinLength, IsOptional } from 'class-validator';
 
 export class CreateTaskDto {
   @IsString()
@@ -23,4 +23,10 @@ export class CreateTaskDto {
     message: '无效的权限模式',
   })
   permission_mode?: string;
+
+  @IsOptional()
+  @IsInt({ message: '超时分钟数必须是整数' })
+  @Min(5, { message: '超时分钟数不能小于5' })
+  @Max(120, { message: '超时分钟数不能大于120' })
+  timeout_minutes?: number;
 }

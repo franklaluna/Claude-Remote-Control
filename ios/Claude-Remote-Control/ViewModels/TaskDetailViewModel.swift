@@ -9,7 +9,7 @@ final class TaskDetailViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var continueText = ""
     @Published var isSending = false
-    @Published var newTaskCreated = false
+    @Published var cycleSeparatorIndices: Set<Int> = []
 
     private let api = APIService.shared
     private let ws = WebSocketService.shared
@@ -42,11 +42,15 @@ final class TaskDetailViewModel: ObservableObject {
         await MainActor.run { isSending = true }
 
         do {
-            let response = try await api.continueTask(id: id, prompt: continueText.trimmingCharacters(in: .whitespaces))
+            _ = try await api.continueTask(id: id, prompt: continueText.trimmingCharacters(in: .whitespaces))
             await MainActor.run {
                 self.isSending = false
                 self.continueText = ""
-                self.newTaskCreated = true
+                // 标记当前日志位置为追问分割点，然后重新开始接收日志
+                self.cycleSeparatorIndices.insert(self.logs.count)
+                // 重置状态，等待 WebSocket 推送新的执行日志
+                self.task?.status = .running
+                self.result = nil
             }
         } catch {
             await MainActor.run {
@@ -54,6 +58,22 @@ final class TaskDetailViewModel: ObservableObject {
                 self.isSending = false
             }
         }
+    }
+
+    func cancelTask() async {
+        guard let id = taskID else { return }
+        do {
+            _ = try await api.cancelTask(id: id)
+            await MainActor.run {
+                self.task?.status = .cancelled
+            }
+        } catch {
+            await MainActor.run { errorMessage = error.localizedDescription }
+        }
+    }
+
+    func isCycleSeparator(at index: Int) -> Bool {
+        cycleSeparatorIndices.contains(index)
     }
 
     private func subscribeToRealtimeUpdates() {

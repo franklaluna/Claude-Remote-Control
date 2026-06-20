@@ -31,6 +31,12 @@ struct CreateTaskView: View {
                             Text(mode.displayName).tag(mode)
                         }
                     }
+                    Picker("超时", selection: $viewModel.timeoutMinutes) {
+                        Text("15分钟").tag(15)
+                        Text("30分钟(默认)").tag(30)
+                        Text("60分钟").tag(60)
+                        Text("120分钟").tag(120)
+                    }
                 }
 
                 if let error = viewModel.errorMessage {

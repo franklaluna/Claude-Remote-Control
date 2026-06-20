@@ -35,3 +35,37 @@
 - Redis: 192.168.2.138:6379
 - 部署位置: k8s 集群 (Deployment + Service + Nginx stream 代理)
 - WebSocket: Nginx 已支持 WebSocket 代理 (参考 5601 端口配置)
+
+## 团队协作
+
+### 团队控制面
+- team-lead = 主会话，负责任务分解、进度追踪、用户对齐
+- 全部开发工作通过队友 (Agent with team_name) 进行
+
+### 团队名册
+
+| 名称 | 角色 | 技术栈 |
+|------|------|--------|
+| ios-dev | iOS 开发者 | SwiftUI + Combine |
+| server-dev | 服务端开发者 | NestJS + Prisma + MySQL |
+| agent-dev | Agent 开发者 | Go |
+| reviewer | 代码审查者 | 安全 + 质量审查 |
+
+### 任务分配协议
+- 大任务: 发送到对应队友，附带完整上下文（范围、验收标准、依赖文件）
+- 跨组件任务: server-dev 为 primary，定义合同，ios-dev/agent-dev 实现各自部分
+- 审查: 全部开发完成后由 reviewer 统一审查
+
+### 状态检查
+| 检查内容 | 方式 |
+|----------|------|
+| 总览 | TaskList |
+| 个人进度 | .plans/claude-remote-control/{name}/progress.md |
+| 详细调查 | .plans/claude-remote-control/{name}/findings.md |
+
+### 文档索引
+| 文档 | 路径 |
+|------|------|
+| 任务计划 | .plans/claude-remote-control/task_plan.md |
+| 进度日志 | .plans/claude-remote-control/progress.md |
+| 测试计划 | .plans/claude-remote-control/reviewer/test-plan.md |

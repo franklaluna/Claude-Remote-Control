@@ -22,8 +22,6 @@ import (
 	"github.com/claude-remote-control/agent/internal/ws"
 )
 
-const taskTimeout = 30 * time.Minute
-
 func main() {
 	configPath := flag.String("config", "agent-config.json", "配置文件路径")
 	flag.Parse()
@@ -66,6 +64,12 @@ func main() {
 		}
 		cancelMu.Unlock()
 	}
+
+	// 追问继续回调
+	taskReceiver.OnContinue = func(params task.TaskContinueParams) {
+		handleContinue(wsClient, claude, params, &cancelMu, cancelMap)
+	}
+	wsClient.OnContinueReceived = taskReceiver.HandleContinue
 
 	// 优雅退出
 	sigCh := make(chan os.Signal, 1)
@@ -124,7 +128,8 @@ func handleTask(wsClient *ws.Client, claude *executor.Claude, params task.TaskPa
 	}
 
 	// 创建带超时的上下文，支持外部取消
-	ctx, cancel := context.WithTimeout(context.Background(), taskTimeout)
+	timeout := time.Duration(params.TimeoutMinutes) * time.Minute
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	cancelMu.Lock()
@@ -150,7 +155,7 @@ func handleTask(wsClient *ws.Client, claude *executor.Claude, params task.TaskPa
 	if execResult.ExitCode != 0 || execResult.Error != nil {
 		if ctx.Err() != nil {
 			if ctx.Err() == context.DeadlineExceeded {
-				execResult.Error = fmt.Errorf("任务执行超时 (%v)", taskTimeout)
+				execResult.Error = fmt.Errorf("任务执行超时 (%v)", timeout)
 				execResult.ExitCode = -1
 			} else if ctx.Err() == context.Canceled {
 				// 被取消 — 不发送失败结果，只记录
@@ -166,4 +171,88 @@ func handleTask(wsClient *ws.Client, claude *executor.Claude, params task.TaskPa
 	}
 
 	fmt.Printf("任务 %s 处理完成\n", params.TaskID)
+}
+
+// handleContinue 处理追问，在同一任务上下文中继续执行
+func handleContinue(wsClient *ws.Client, claude *executor.Claude, params task.TaskContinueParams,
+	cancelMu *sync.Mutex, cancelMap map[string]context.CancelFunc) {
+
+	log.Printf("开始处理追问: %s", params.TaskID)
+
+	// 安全检查
+	safe, reason := security.Check(params.Prompt)
+	if !safe {
+		log.Printf("[security] 追问被拒绝: %s", reason)
+		wsClient.Send(ws.Message{
+			Type: "task_failed",
+			Payload: map[string]interface{}{
+				"task_id": params.TaskID,
+				"error":   reason,
+			},
+		})
+		return
+	}
+
+	// 发送 task_started（不发送 task_accepted，因为不是新任务）
+	wsClient.Send(ws.Message{
+		Type: "task_started",
+		Payload: map[string]interface{}{
+			"task_id": params.TaskID,
+		},
+	})
+
+	// 初始化流式上传器和结果收集器
+	logStreamer := streamer.New(wsClient, params.TaskID)
+	resultCollector := result.NewCollector(wsClient, params.TaskID)
+
+	onLine := func(line string, isStderr bool) {
+		logStreamer.OnLine(line, isStderr)
+		resultCollector.CollectLog(line)
+	}
+
+	// 创建新超时上下文，复用相同的 taskID（覆盖之前的 cancel func）
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	defer cancel()
+
+	cancelMu.Lock()
+	// 如果之前有同 taskID 的运行中任务，先取消旧的
+	if oldCancel, ok := cancelMap[params.TaskID]; ok {
+		oldCancel()
+	}
+	cancelMap[params.TaskID] = cancel
+	cancelMu.Unlock()
+	defer func() {
+		cancelMu.Lock()
+		delete(cancelMap, params.TaskID)
+		cancelMu.Unlock()
+	}()
+
+	// 执行 Claude Code
+	execTask := executor.Task{
+		TaskID:           params.TaskID,
+		Prompt:           params.Prompt,
+		WorkingDirectory: params.WorkingDirectory,
+	}
+
+	execResult := claude.Execute(ctx, execTask, onLine)
+
+	// 区分超时取消和失败
+	if execResult.ExitCode != 0 || execResult.Error != nil {
+		if ctx.Err() != nil {
+			if ctx.Err() == context.DeadlineExceeded {
+				execResult.Error = fmt.Errorf("追问执行超时 (30m)")
+				execResult.ExitCode = -1
+			} else if ctx.Err() == context.Canceled {
+				log.Printf("追问 %s 已取消", params.TaskID)
+				return
+			}
+		}
+	}
+
+	// 发送最终结果
+	if err := resultCollector.Send(execResult); err != nil {
+		log.Printf("发送追问结果失败: %v", err)
+	}
+
+	fmt.Printf("追问 %s 处理完成\n", params.TaskID)
 }

@@ -12,6 +12,14 @@ struct TaskDetailView: View {
                     Text(t.title).font(.headline)
                     Text(t.status.displayName).font(.caption)
                         .foregroundColor(t.status == .completed ? .green : t.status == .failed ? .red : .orange)
+                    if t.status == .queued || t.status == .running {
+                        Button("取消任务") {
+                            Task { await viewModel.cancelTask() }
+                        }
+                        .font(.caption)
+                        .foregroundColor(.red)
+                        .padding(.top, 4)
+                    }
                 }
                 .padding(.vertical, 8)
             }
@@ -28,7 +36,16 @@ struct TaskDetailView: View {
                                 .padding(.bottom, 8)
                         }
 
-                        ForEach(viewModel.logs) { log in
+                        ForEach(Array(viewModel.logs.enumerated()), id: \.element.id) { index, log in
+                            if viewModel.isCycleSeparator(at: index) {
+                                HStack {
+                                    Rectangle().fill(Color.secondary.opacity(0.3)).frame(height: 1)
+                                    Text("新的追问").font(.caption2).foregroundColor(.secondary)
+                                    Rectangle().fill(Color.secondary.opacity(0.3)).frame(height: 1)
+                                }
+                                .padding(.horizontal)
+                                .padding(.vertical, 4)
+                            }
                             Text(log.message)
                                 .font(.caption)
                                 .padding(8)

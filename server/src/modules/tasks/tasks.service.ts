@@ -11,6 +11,7 @@ import {
   GetTaskResponse,
   TaskListResponse,
   CancelTaskResponse,
+  DeleteTaskResponse,
 } from '../../types';
 
 @Injectable()
@@ -99,14 +100,19 @@ export class TasksService {
     return result;
   }
 
-  /** 取消排队中的任务 */
+  /** 取消排队中或运行中的任务 */
   async cancel(userId: string, taskId: string): Promise<CancelTaskResponse> {
     const task = await this.prisma.task.findUnique({ where: { id: taskId } });
     if (!task || task.user_id !== userId) {
       throw new NotFoundException('任务不存在');
     }
-    if (task.status !== 'queued') {
-      throw new BadRequestException('只能取消排队中的任务');
+    if (task.status !== 'queued' && task.status !== 'running') {
+      throw new BadRequestException('只能取消排队中或运行中的任务');
+    }
+
+    // 运行中的任务：先通过 WebSocket 向 Agent 发送取消指令
+    if (task.status === 'running') {
+      this.ws.sendTaskCancel(task.device_id, taskId);
     }
 
     const updated = await this.prisma.task.update({
@@ -145,43 +151,44 @@ export class TasksService {
     }
   }
 
-  /** 在已有任务基础上继续对话（创建子任务，携带上下文） */
+  /** 在当前任务基础上继续对话（复用同一任务，发送追问到 Agent） */
   async continueTask(userId: string, parentTaskId: string, followUpPrompt: string): Promise<CreateTaskResponse> {
     const parent = await this.prisma.task.findUnique({ where: { id: parentTaskId } });
     if (!parent || parent.user_id !== userId) {
       throw new NotFoundException('任务不存在');
     }
+    if (parent.status === 'queued' || parent.status === 'running' || parent.status === 'cancelled') {
+      throw new BadRequestException('无法继续排队中、运行中或已取消的任务');
+    }
 
-    // 拼接上下文：原 prompt + 执行日志摘要 → 新 prompt
-    const logs = await this.prisma.taskLog.findMany({
-      where: { task_id: parentTaskId },
-      orderBy: { timestamp: 'asc' },
-    });
-    const context = logs.map(l => l.message).join('\n');
-    const fullPrompt = `【继续之前的对话】
+    // 追加追问日志
+    await this.appendLog(parentTaskId, `追问: ${followUpPrompt}`);
 
-之前的任务: ${parent.title}
-之前的执行结果:
-${context || parent.summary || '(无日志)'}
-
-新的指令: ${followUpPrompt}
-
-请基于以上上下文继续执行。`;
-
-    const task = await this.prisma.task.create({
-      data: {
-        user_id: userId,
-        device_id: parent.device_id,
-        title: `↳ ${parent.title}`,
-        prompt: fullPrompt,
-        working_directory: parent.working_directory,
-        permission_mode: parent.permission_mode,
-        status: 'queued',
-      },
+    // 将任务状态重置为 running
+    const updated = await this.prisma.task.update({
+      where: { id: parentTaskId },
+      data: { status: 'running' },
     });
 
-    await this.tryDispatchNext(parent.device_id);
-    return { task: task as Task };
+    // 通过 WebSocket 发送追问指令到 Agent
+    this.ws.sendTaskContinue(parent.device_id, parentTaskId, followUpPrompt, parent.working_directory);
+    this.logger.log(`追问已发送: task=${parentTaskId}, device=${parent.device_id}`);
+
+    return { task: updated as Task };
+  }
+
+  /** 删除已完成/失败/取消的任务 */
+  async delete(userId: string, taskId: string): Promise<DeleteTaskResponse> {
+    const task = await this.prisma.task.findUnique({ where: { id: taskId } });
+    if (!task || task.user_id !== userId) {
+      throw new NotFoundException('任务不存在');
+    }
+    if (task.status !== 'completed' && task.status !== 'failed' && task.status !== 'cancelled') {
+      throw new BadRequestException('只能删除已完成、失败或取消的任务');
+    }
+
+    await this.prisma.task.delete({ where: { id: taskId } });
+    return { ok: true };
   }
 
   // ---- 内部方法 ----
@@ -208,6 +215,7 @@ ${context || parent.summary || '(无日志)'}
       next.title,
       next.prompt,
       next.working_directory,
+      (next as any).timeout_minutes,
     );
 
     if (sent) {

@@ -135,6 +135,10 @@ final class APIService {
         let body = ContinueTaskRequest(prompt: prompt)
         return try await request(method: "POST", path: "tasks/\(id)/continue", body: body)
     }
+
+    func deleteTask(id: String) async throws -> DeleteTaskResponse {
+        try await request(method: "DELETE", path: "tasks/\(id)")
+    }
 }
 struct ContinueTaskRequest: Codable {
     let prompt: String

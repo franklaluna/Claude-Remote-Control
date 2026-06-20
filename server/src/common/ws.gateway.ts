@@ -193,7 +193,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const userId = (ws as any)._userId;
     const task = await this.prisma.task.findUnique({ where: { id: payload.task_id } });
     if (!task || task.user_id !== userId) return;
-    if (task.status !== 'queued') return;
+    if (task.status !== 'queued' && task.status !== 'running') return;
 
     await this.prisma.task.update({ where: { id: payload.task_id }, data: { status: 'cancelled' } });
     this.sendToDevice(task.device_id, buildMsg('cancel_task', { task_id: payload.task_id }));
@@ -212,8 +212,18 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   // ===== 公共方法 =====
 
-  sendTaskCreate(deviceId: string, taskId: string, title: string, prompt: string, workingDirectory: string): boolean {
-    return this.sendToDevice(deviceId, buildMsg('task_create', { task_id: taskId, title, prompt, working_directory: workingDirectory }));
+  sendTaskCreate(deviceId: string, taskId: string, title: string, prompt: string, workingDirectory: string, timeoutMinutes?: number): boolean {
+    const payload: any = { task_id: taskId, title, prompt, working_directory: workingDirectory };
+    if (timeoutMinutes) payload.timeout_minutes = timeoutMinutes;
+    return this.sendToDevice(deviceId, buildMsg('task_create', payload));
+  }
+
+  sendTaskContinue(deviceId: string, taskId: string, prompt: string, workingDirectory: string): boolean {
+    return this.sendToDevice(deviceId, buildMsg('task_continue', { task_id: taskId, prompt, working_directory: workingDirectory }));
+  }
+
+  sendTaskCancel(deviceId: string, taskId: string): boolean {
+    return this.sendToDevice(deviceId, buildMsg('cancel_task', { task_id: taskId }));
   }
 
   sendToDevice(deviceId: string, message: WsMessage): boolean {
